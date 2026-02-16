@@ -1,0 +1,161 @@
+// Firebase Firestore Security Rules for VajraBank Partner & Ad System
+// Copy these rules to Firebase Console → Firestore Database → Rules
+
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Helper Functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    function isAdmin() {
+      return isAuthenticated() && 
+             get(/databases/$(database)/documents/admins/$(request.auth.uid)).data.role == 'admin';
+    }
+    
+    function isPartner() {
+      return isAuthenticated() && 
+             exists(/databases/$(database)/documents/partners/$(request.auth.uid));
+    }
+    
+    function isActivePartner() {
+      return isPartner() && 
+             get(/databases/$(database)/documents/partners/$(request.auth.uid)).data.isActive == true;
+    }
+    
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+    
+    // ========================================
+    // USERS COLLECTION
+    // ========================================
+    match /users/{userId} {
+      // Users can read their own data
+      allow read: if isOwner(userId) || isAdmin();
+      
+      // Users can create their own profile during signup
+      allow create: if isAuthenticated() && isOwner(userId);
+      
+      // Users can update their own profile
+      allow update: if isOwner(userId) || isAdmin();
+      
+      // Only admins can delete
+      allow delete: if isAdmin();
+    }
+    
+    // ========================================
+    // PARTNERS COLLECTION
+    // ========================================
+    match /partners/{partnerId} {
+      // Partners can read their own data, admins can read all
+      allow read: if isOwner(partnerId) || isAdmin();
+      
+      // Partners can create their own profile during registration
+      allow create: if isAuthenticated() && isOwner(partnerId);
+      
+      // Partners can update their own profile (e.g., after payment)
+      // Admins can update any partner
+      allow update: if isOwner(partnerId) || isAdmin();
+      
+      // Only admins can delete partners
+      allow delete: if isAdmin();
+    }
+    
+    // ========================================
+    // ADS COLLECTION (CRITICAL)
+    // ========================================
+    match /ads/{adId} {
+      // PUBLIC: Anyone can read APPROVED ads
+      // PARTNERS: Can read their own ads (any status)
+      // ADMINS: Can read all ads
+      allow read: if resource.data.status == 'APPROVED' || 
+                     isOwner(resource.data.partnerId) || 
+                     isAdmin();
+      
+      // PARTNERS: Can create ads (must be active partner)
+      allow create: if isActivePartner() && 
+                       request.resource.data.partnerId == request.auth.uid &&
+                       request.resource.data.status == 'PENDING';
+      
+      // PARTNERS: Cannot update their own ads after submission
+      // ADMINS: Can update any ad (for approval/rejection)
+      allow update: if isAdmin();
+      
+      // Only admins can delete ads
+      allow delete: if isAdmin();
+    }
+    
+    // ========================================
+    // NOTIFICATIONS COLLECTION
+    // ========================================
+    match /notifications/{notifId} {
+      // Users can read notifications targeted to them
+      // Admins can read all admin-targeted notifications
+      allow read: if (resource.data.targetRole == 'admin' && isAdmin()) ||
+                     (resource.data.targetUserId == request.auth.uid) ||
+                     isAdmin();
+      
+      // Only system/admins can create notifications
+      // Partners can create notifications when submitting ads (handled in app logic)
+      allow create: if isAuthenticated();
+      
+      // Users can mark their own notifications as read
+      // Admins can update any notification
+      allow update: if (resource.data.targetUserId == request.auth.uid) || 
+                       (resource.data.targetRole == 'admin' && isAdmin()) ||
+                       isAdmin();
+      
+      // Users can delete their own notifications
+      allow delete: if (resource.data.targetUserId == request.auth.uid) || isAdmin();
+    }
+    
+    // ========================================
+    // PAYMENTS COLLECTION
+    // ========================================
+    match /payments/{paymentId} {
+      // Partners can read their own payments, admins can read all
+      allow read: if isOwner(resource.data.partnerId) || isAdmin();
+      
+      // Only authenticated users can create payment records
+      allow create: if isAuthenticated() && isOwner(request.resource.data.partnerId);
+      
+      // Only admins can update/delete payments
+      allow update, delete: if isAdmin();
+    }
+    
+    // ========================================
+    // ADMINS COLLECTION
+    // ========================================
+    match /admins/{adminId} {
+      // Only admins can read admin collection
+      allow read: if isAdmin();
+      
+      // No one can create/update/delete admins via Firestore
+      // (Admins are managed through Firebase Console or backend)
+      allow create, update, delete: if false;
+    }
+    
+    // ========================================
+    // TRANSACTIONS, LOANS, etc. (Existing Collections)
+    // ========================================
+    match /transactions/{transactionId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
+    }
+    
+    match /loans/{loanId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
+    }
+    
+    // ========================================
+    // DEFAULT DENY ALL
+    // ========================================
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

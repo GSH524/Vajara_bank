@@ -1,0 +1,6 @@
+@import "tailwindcss";
+@keyframes shine {
+    100% {
+      transform: translateX(100%);
+    }
+  }

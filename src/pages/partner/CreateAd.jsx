@@ -44,23 +44,14 @@ export default function CreateAd() {
         setLoading(true);
 
         if (!formData.title || !formData.imageUrl || !formData.link) {
-            toast.error("Please fill in all required fields");
-            setLoading(false);
-            return;
-        }
-
-        const placements = [];
-        if (formData.placements.home) placements.push("HOME");
-        if (formData.placements.about) placements.push("ABOUT");
-        if (formData.placements.contact) placements.push("CONTACT");
-
-        if (placements.length === 0) {
-            toast.error("Please select at least one placement");
+            toast.error("Required fields missing");
             setLoading(false);
             return;
         }
 
         try {
+            const placements = Object.keys(formData.placements).filter(key => formData.placements[key]).map(k => k.toUpperCase());
+            
             const adData = {
                 partnerId: user.uid,
                 partnerName: user.displayName || user.companyName,
@@ -71,6 +62,7 @@ export default function CreateAd() {
                 budget: parseFloat(formData.budget),
                 placements: placements,
                 status: "PENDING",
+                clicks: 0,
                 createdAt: serverTimestamp()
             };
 
@@ -80,18 +72,18 @@ export default function CreateAd() {
                 type: "AD_SUBMITTED",
                 adId: docRef.id,
                 partnerId: user.uid,
-                message: `New ad submitted by ${user.companyName || user.displayName}`,
+                message: `New campaign deployment by ${user.companyName || user.displayName}`,
                 targetRole: "admin",
                 isRead: false,
                 createdAt: serverTimestamp()
             });
 
-            toast.success("Ad submitted for approval!");
+            toast.success("Campaign deployed to queue!");
             setTimeout(() => navigate("/partner/dashboard"), 1500);
 
         } catch (err) {
-            console.error("Error creating ad:", err);
-            toast.error("Failed to create ad.");
+            console.error(err);
+            toast.error("Deployment failed");
         } finally {
             setLoading(false);
         }
@@ -101,209 +93,153 @@ export default function CreateAd() {
         ? (parseFloat(formData.budget) / parseInt(formData.durationDays)).toFixed(2)
         : "0.00";
 
+    const inputStyle = "w-full px-5 py-4 bg-white/5 border border-white/10 rounded-2xl outline-none focus:bg-white/10 focus:ring-2 focus:ring-blue-500/40 focus:border-blue-500 transition-all text-white text-base placeholder:text-slate-500";
+
     return (
-        <div className="min-h-screen bg-slate-50 p-4 md:p-8 font-sans">
+        <div className="min-h-screen bg-slate-950 text-slate-200 p-4 md:p-8 font-sans">
             <Toaster position="top-right" />
 
             <div className="max-w-6xl mx-auto">
-                <header className="mb-8">
-                    <h1 className="text-3xl font-black text-slate-900 tracking-tight">Create Campaign</h1>
-                    <p className="text-slate-500 mt-1">Launch a new ad across the ecosystem. Approval takes ~24h.</p>
+                {/* BREADCRUMB HEADER */}
+                <header className="mb-10 p-6 rounded-2xl bg-white/5 border border-white/10 backdrop-blur-md flex justify-between items-center">
+                    <div>
+                        <h1 className="text-2xl font-black text-white tracking-tight">Deploy Campaign</h1>
+                        <p className="text-slate-400 text-xs mt-1 uppercase tracking-widest font-bold">Operation: Market Reach</p>
+                    </div>
+                    <button onClick={() => navigate(-1)} className="text-slate-400 hover:text-white text-sm font-bold transition-colors">
+                        ← Back to Dashboard
+                    </button>
                 </header>
 
                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
                     
-                    {/* LEFT SIDE - FORM */}
-                    <div className="lg:col-span-7 space-y-6">
-                        <form onSubmit={handleSubmit} className="bg-white rounded-3xl shadow-sm border border-slate-200 p-6 md:p-8 space-y-6">
+                    {/* CONFIGURATION PANEL */}
+                    <div className="lg:col-span-7 order-2 lg:order-1">
+                        <form onSubmit={handleSubmit} className="bg-white/5 border border-white/10 backdrop-blur-xl rounded-3xl p-6 md:p-10 space-y-8 shadow-2xl">
                             
-                            {/* Campaign Headline */}
-                            <div className="space-y-2">
-                                <label className="text-xs font-bold text-slate-500 uppercase tracking-widest ml-1">Campaign Headline</label>
-                                <div className="relative group">
-                                    <input
-                                        name="title"
-                                        className="w-full pl-4 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:bg-white focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 transition-all text-slate-900"
-                                        value={formData.title}
-                                        onChange={handleChange}
-                                        placeholder="e.g. Zero Fee International Transfers"
-                                        required
-                                    />
-                                </div>
-                            </div>
-
-                            {/* Creative Image URL */}
-                            <div className="space-y-2">
-                                <label className="text-xs font-bold text-slate-500 uppercase tracking-widest ml-1">Creative Image URL</label>
-                                <input
-                                    name="imageUrl"
-                                    className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:bg-white focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 transition-all text-slate-900"
-                                    value={formData.imageUrl}
-                                    onChange={handleChange}
-                                    placeholder="https://example.com/banner.jpg"
-                                    required
-                                />
-                                <p className="text-[11px] text-slate-400 italic px-1 flex items-center gap-1">
-                                    <InfoCircle size={12} /> Recommended size: 1920x600px (High Resolution JPG/PNG)
-                                </p>
-                            </div>
-
-                            {/* Destination URL */}
-                            <div className="space-y-2">
-                                <label className="text-xs font-bold text-slate-500 uppercase tracking-widest ml-1 text-blue-600">Destination URL</label>
-                                <div className="relative">
-                                    <Link45deg className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-                                    <input
-                                        name="link"
-                                        className="w-full pl-11 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:bg-white focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 transition-all text-slate-900"
-                                        value={formData.link}
-                                        onChange={handleChange}
-                                        placeholder="https://yourbusiness.com/offer"
-                                        required
-                                    />
-                                </div>
-                            </div>
-
-                            {/* Duration & Budget */}
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                <div className="space-y-2">
-                                    <label className="text-xs font-bold text-slate-500 uppercase tracking-widest ml-1">Duration</label>
-                                    <div className="relative">
-                                        <Calendar className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" size={16} />
-                                        <select
-                                            name="durationDays"
-                                            className="w-full pl-11 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl outline-none appearance-none focus:bg-white focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 transition-all text-slate-900"
-                                            value={formData.durationDays}
-                                            onChange={handleChange}
-                                        >
-                                            <option value="7">7 Days</option>
-                                            <option value="14">14 Days</option>
-                                            <option value="30">30 Days</option>
-                                            <option value="60">60 Days</option>
-                                            <option value="90">90 Days</option>
-                                        </select>
+                            <div className="space-y-4">
+                                <h3 className="text-blue-400 text-xs font-black uppercase tracking-[0.2em] flex items-center gap-2">
+                                    <span className="w-1.5 h-1.5 bg-blue-500 rounded-full"></span>
+                                    Core Identity
+                                </h3>
+                                <div className="space-y-6">
+                                    <div className="space-y-2">
+                                        <label className="text-[10px] font-bold text-slate-500 uppercase ml-1">Campaign Headline</label>
+                                        <input name="title" className={inputStyle} value={formData.title} onChange={handleChange} placeholder="e.g., Premium Banking Rewards" required />
                                     </div>
-                                </div>
-
-                                <div className="space-y-2">
-                                    <label className="text-xs font-bold text-slate-500 uppercase tracking-widest ml-1">Total Budget (USD)</label>
-                                    <div className="relative">
-                                        <CurrencyDollar className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
-                                        <input
-                                            type="number"
-                                            name="budget"
-                                            className="w-full pl-11 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:bg-white focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 transition-all text-slate-900"
-                                            value={formData.budget}
-                                            onChange={handleChange}
-                                            min="10"
-                                            required
-                                        />
+                                    <div className="space-y-2">
+                                        <label className="text-[10px] font-bold text-slate-500 uppercase ml-1">Asset Image URL</label>
+                                        <input name="imageUrl" className={inputStyle} value={formData.imageUrl} onChange={handleChange} placeholder="https://assets.vajra.ai/banner-01.png" required />
                                     </div>
                                 </div>
                             </div>
 
-                            {/* Ad Placements */}
-                            <div className="space-y-3 pt-2">
-                                <label className="text-xs font-bold text-slate-500 uppercase tracking-widest ml-1">Target Placements</label>
-                                <div className="flex flex-wrap gap-3">
-                                    {['home', 'about', 'contact'].map((p) => (
-                                        <button
-                                            key={p}
-                                            type="button"
-                                            onClick={() => handlePlacementToggle(p)}
-                                            className={`flex items-center gap-2 px-5 py-2.5 rounded-full border text-sm font-bold transition-all ${
-                                                formData.placements[p] 
-                                                ? 'bg-blue-600 border-blue-600 text-white shadow-lg shadow-blue-100' 
-                                                : 'bg-white border-slate-200 text-slate-500 hover:border-slate-300'
-                                            }`}
-                                        >
-                                            {formData.placements[p] && <CheckCircleFill size={14} />}
-                                            {p.toUpperCase()}
-                                        </button>
-                                    ))}
+                            <div className="space-y-4">
+                                <h3 className="text-emerald-400 text-xs font-black uppercase tracking-[0.2em] flex items-center gap-2">
+                                    <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full"></span>
+                                    Targeting & Logic
+                                </h3>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <div className="space-y-2">
+                                        <label className="text-[10px] font-bold text-slate-500 uppercase ml-1 text-emerald-500/80">Destination Link</label>
+                                        <div className="relative">
+                                            <Link45deg className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" size={18} />
+                                            <input name="link" className={`${inputStyle} pl-12`} value={formData.link} onChange={handleChange} placeholder="https://..." required />
+                                        </div>
+                                    </div>
+                                    <div className="space-y-2">
+                                        <label className="text-[10px] font-bold text-slate-500 uppercase ml-1">Lifecycle Duration</label>
+                                        <div className="relative">
+                                            <Calendar className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" size={16} />
+                                            <select name="durationDays" className={`${inputStyle} pl-12 appearance-none`} value={formData.durationDays} onChange={handleChange}>
+                                                <option value="7" className="bg-slate-900">7 Days (Sprint)</option>
+                                                <option value="30" className="bg-slate-900">30 Days (Standard)</option>
+                                                <option value="90" className="bg-slate-900">90 Days (Quarterly)</option>
+                                            </select>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
 
-                            {/* Submit Button */}
-                            <button 
-                                type="submit" 
-                                disabled={loading}
-                                className="w-full bg-slate-900 hover:bg-black text-white py-4 rounded-2xl font-black text-lg transition-all active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed shadow-xl shadow-slate-200 flex items-center justify-center gap-3 mt-4"
-                            >
-                                {loading ? (
-                                    <>
-                                        <svg className="animate-spin h-5 w-5 text-white" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
-                                        PROCESSING...
-                                    </>
-                                ) : "SUBMIT FOR APPROVAL"}
+                            <div className="space-y-4">
+                                <h3 className="text-yellow-400 text-xs font-black uppercase tracking-[0.2em] flex items-center gap-2">
+                                    <span className="w-1.5 h-1.5 bg-yellow-500 rounded-full"></span>
+                                    Financials & Placement
+                                </h3>
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                    <div className="md:col-span-1 space-y-2">
+                                        <label className="text-[10px] font-bold text-slate-500 uppercase ml-1">Budget (INR)</label>
+                                        <div className="relative">
+                                            <CurrencyDollar className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" size={16} />
+                                            <input type="number" name="budget" className={`${inputStyle} pl-12`} value={formData.budget} onChange={handleChange} min="100" />
+                                        </div>
+                                    </div>
+                                    <div className="md:col-span-2 flex items-end gap-2">
+                                        {['home', 'about', 'contact'].map((p) => (
+                                            <button key={p} type="button" onClick={() => handlePlacementToggle(p)}
+                                                className={`flex-1 py-4 rounded-2xl border-2 text-[10px] font-black transition-all ${
+                                                    formData.placements[p] 
+                                                    ? 'bg-blue-600 border-blue-500 text-white shadow-lg shadow-blue-500/20' 
+                                                    : 'bg-white/5 border-white/5 text-slate-500 hover:border-white/10'
+                                                }`}>
+                                                {p.toUpperCase()}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+                            </div>
+
+                            <button type="submit" disabled={loading}
+                                className="w-full bg-blue-600 hover:bg-blue-500 text-white py-5 rounded-2xl font-black text-lg transition-all active:scale-[0.98] disabled:opacity-50 flex items-center justify-center gap-3 mt-10 shadow-xl shadow-blue-900/20">
+                                {loading ? "INITIALIZING DEPLOYMENT..." : "DEPLOY TO COMMAND CENTER"}
                             </button>
                         </form>
                     </div>
 
-                    {/* RIGHT SIDE - PREVIEW */}
-                    <div className="lg:col-span-5 space-y-6">
-                        <div className="sticky top-8">
-                            <h3 className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-4 ml-1">Live Ad Preview</h3>
+                    {/* LIVE VISUALIZER PREVIEW */}
+                    <div className="lg:col-span-5 order-1 lg:order-2">
+                        <div className="lg:sticky lg:top-8 space-y-6">
+                            <h3 className="text-[10px] font-black text-slate-500 uppercase tracking-widest text-center lg:text-left">Live Visualizer</h3>
                             
-                            {/* The Ad Display Card */}
-                            <div className="bg-white rounded-3xl shadow-xl shadow-slate-200 overflow-hidden border border-slate-100 group">
-                                <div className="p-4 flex justify-between items-center border-b border-slate-50">
+                            <div className="bg-white/5 border border-white/10 rounded-[2.5rem] shadow-2xl overflow-hidden group backdrop-blur-md">
+                                <div className="p-5 flex justify-between items-center bg-white/5 border-b border-white/5">
                                     <div className="flex items-center gap-2">
-                                        <div className="w-6 h-6 bg-blue-600 rounded-md"></div>
-                                        <span className="text-[10px] font-black text-slate-400 tracking-tighter uppercase">Sponsored Content</span>
+                                        <div className="w-2.5 h-2.5 bg-blue-500 rounded-full animate-pulse"></div>
+                                        <span className="text-[10px] font-black text-white uppercase tracking-tighter">Live System Sponsored</span>
                                     </div>
-                                    <InfoCircle size={14} className="text-slate-300" />
+                                    <InfoCircle size={14} className="text-slate-600" />
                                 </div>
                                 
-                                <div className="aspect-[16/6] bg-slate-100 relative overflow-hidden">
+                                <div className="aspect-video bg-slate-900 relative">
                                     {formData.imageUrl ? (
-                                        <img
-                                            src={formData.imageUrl}
-                                            alt="Ad Preview"
-                                            className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
-                                            onError={(e) => { e.target.src = 'https://placehold.co/1920x600/f1f5f9/64748b?text=Invalid+Image+URL' }}
-                                        />
+                                        <img src={formData.imageUrl} alt="" className="w-full h-full object-cover" onError={(e) => { e.target.src = 'https://placehold.co/800x450/020617/1e293b?text=Invalid+Image+URL' }} />
                                     ) : (
-                                        <div className="absolute inset-0 flex flex-col items-center justify-center text-slate-400">
+                                        <div className="absolute inset-0 flex flex-col items-center justify-center text-slate-800">
                                             <Image size={40} className="mb-2 opacity-20" />
-                                            <p className="text-xs font-medium opacity-50 uppercase tracking-widest">Image Preview</p>
+                                            <p className="text-[10px] font-black uppercase tracking-widest">Asset Missing</p>
                                         </div>
                                     )}
                                 </div>
 
-                                <div className="p-6">
-                                    <h4 className="text-xl font-bold text-slate-900 leading-tight mb-2">
-                                        {formData.title || "Your Campaign Headline Here"}
+                                <div className="p-8">
+                                    <h4 className="text-2xl font-black text-white leading-tight mb-6">
+                                        {formData.title || "Target Headline Preview"}
                                     </h4>
-                                    <div className="inline-block px-4 py-2 bg-slate-900 text-white text-xs font-bold rounded-lg pointer-events-none">
-                                        LEARN MORE
+                                    <div className="inline-flex items-center gap-2 px-8 py-3 bg-white text-slate-950 text-xs font-black rounded-xl uppercase tracking-wider">
+                                        Engage Now
                                     </div>
                                 </div>
                             </div>
 
-                            {/* Campaign Summary Card */}
-                            <div className="mt-6 bg-blue-50/50 rounded-2xl p-6 border border-blue-100 space-y-4">
-                                <div className="flex items-center gap-2 text-blue-700">
-                                    <InfoCircle size={18} />
-                                    <span className="font-bold text-sm">Campaign Summary</span>
+                            {/* COST PROJECTION */}
+                            <div className="bg-gradient-to-br from-blue-600/10 to-transparent rounded-3xl p-6 border border-blue-500/20 grid grid-cols-2 gap-4">
+                                <div>
+                                    <p className="text-[9px] text-blue-400 font-black uppercase mb-1">Projected Cost</p>
+                                    <p className="text-2xl font-black text-white">₹{formData.budget}</p>
                                 </div>
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div className="bg-white p-3 rounded-xl border border-blue-100">
-                                        <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wide">Total Spend</p>
-                                        <p className="text-lg font-black text-slate-900">${formData.budget}</p>
-                                    </div>
-                                    <div className="bg-white p-3 rounded-xl border border-blue-100">
-                                        <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wide">Daily Average</p>
-                                        <p className="text-lg font-black text-blue-600">${dailySpend}</p>
-                                    </div>
-                                </div>
-                                <div className="flex justify-between items-center px-1">
-                                    <span className="text-xs text-slate-500 font-medium italic underline decoration-blue-200 underline-offset-4">
-                                        Duration: {formData.durationDays} Days
-                                    </span>
-                                    <span className="text-[10px] bg-white px-2 py-1 rounded-md text-slate-400 font-bold border border-slate-100">
-                                        {formData.placements.home && 'HOME'} {formData.placements.about && '• ABOUT'}
-                                    </span>
+                                <div>
+                                    <p className="text-[9px] text-emerald-400 font-black uppercase mb-1">Burn Rate (Avg)</p>
+                                    <p className="text-2xl font-black text-emerald-400">₹{dailySpend}/day</p>
                                 </div>
                             </div>
                         </div>

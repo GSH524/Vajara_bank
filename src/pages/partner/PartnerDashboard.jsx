@@ -147,7 +147,8 @@ export default function PartnerDashboard() {
                     { label: "Total Customers", value: stats.totalCustomers.toLocaleString(), trend: "+12% this month", color: "text-white" },
                     { label: "Total Liquidity", value: `₹${(stats.totalBalance / 10000000).toFixed(2)}Cr`, trend: "Across all accounts", color: "text-blue-400" },
                     { label: "Active Status", value: stats.activeCount, trend: "Healthy Ratio", color: "text-emerald-400" },
-                    { label: "Frozen Accounts", value: stats.frozenCount, trend: "Requires Review", color: "text-red-500" }
+                    { label: "Frozen Accounts", value: stats.frozenCount, trend: "Requires Review", color: "text-red-500" },
+                    { label: "Ad visitors", value: ads.reduce((s,a) => s + (a.clicks || 0), 0), trend: "Across your campaigns", color: "text-yellow-400" }
                 ].map((stat, i) => (
                     <div key={i} className="p-6 rounded-2xl bg-white/5 border border-white/10 hover:bg-white/10 transition-colors">
                         <p className="text-slate-400 text-xs font-bold uppercase tracking-wider mb-1">{stat.label}</p>
@@ -259,6 +260,17 @@ export default function PartnerDashboard() {
                                         <span>📅 {ad.durationDays || 30} Days</span>
                                         <span>🔗 {ad.placements?.length || 0} Placements</span>
                                     </div>
+
+                                    {/* Clicks badge */}
+                                    <div className="flex items-center gap-3 mb-4">
+                                        <div className="bg-slate-800/60 px-3 py-1 rounded-full text-[11px] font-bold text-slate-300 border border-slate-700">
+                                            👆 Clicks: <span className="text-white ml-2">{ad.clicks || 0}</span>
+                                        </div>
+                                        <div className="bg-white/5 px-3 py-1 rounded-full text-[11px] font-bold text-slate-300 border border-white/5">
+                                            ⏱ Last action: {ad.lastClickAt ? new Date(ad.lastClickAt?.seconds * 1000).toLocaleString() : '—'}
+                                        </div>
+                                    </div>
+
                                     <div className="flex gap-2">
                                         <button onClick={() => window.open(ad.redirectUrl, '_blank')} className="flex-1 bg-white/5 hover:bg-white/10 py-2 rounded-lg text-xs font-bold transition-colors">
                                             Link

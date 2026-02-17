@@ -40,15 +40,20 @@ export default function PartnerLogin() {
       }
 
       const partnerData = partnerDoc.data();
-
-      await loginUser({
+      const partnerProfile = {
         uid: user.uid,
         email: user.email,
         role: "partner",
         source: "firebase",
         displayName: partnerData.companyName || partnerData.fullName,
         ...partnerData
-      });
+      };
+
+      // FIX: Persist to localStorage so session survives page refresh
+      localStorage.setItem("legacyUser", JSON.stringify(partnerProfile));
+
+      // Update global auth state
+      await loginUser(partnerProfile);
 
       if (partnerData.isActive) {
         navigate("/partner/dashboard");
@@ -60,8 +65,6 @@ export default function PartnerLogin() {
       console.error("Login failed:", err);
       if (err.code === "auth/invalid-credential" || err.code === "auth/wrong-password") {
         setError("Invalid email or password.");
-      } else if (err.code === "auth/too-many-requests") {
-        setError("Too many attempts. Please try again later.");
       } else {
         setError("Login failed. Please try again.");
       }
@@ -71,101 +74,47 @@ export default function PartnerLogin() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-6">
-      <div className="w-full max-w-md">
-        
-        {/* Header Section */}
-        <div className="text-center mb-10">
-          <div className="inline-flex items-center justify-center w-14 h-14 bg-indigo-600 text-white rounded-2xl shadow-xl shadow-indigo-200 mb-4 text-2xl font-bold">
-            P
-          </div>
-          <h2 className="text-3xl font-black text-slate-900 tracking-tight">Partner Portal</h2>
-          <p className="text-slate-500 mt-2">Sign in to manage your campaigns</p>
+    <div className="min-h-screen bg-slate-900 flex items-center justify-center p-6">
+      <div className="w-full max-w-md bg-slate-800 p-8 rounded-3xl shadow-2xl border border-slate-700">
+        <div className="text-center mb-8">
+          <div className="inline-flex items-center justify-center w-14 h-14 bg-blue-600 text-white rounded-2xl mb-4 text-2xl font-bold">P</div>
+          <h2 className="text-3xl font-black text-white">Partner Portal</h2>
         </div>
 
-        {/* Login Card */}
-        <div className="bg-white/80 backdrop-blur-xl p-8 rounded-3xl shadow-2xl shadow-slate-200 border border-white">
-          
-          {error && (
-            <div className="mb-6 p-4 bg-red-50 border-l-4 border-red-500 text-red-700 text-sm font-medium rounded-r-lg animate-pulse">
-              {error}
-            </div>
-          )}
+        {error && <div className="mb-4 p-3 bg-red-500/10 border border-red-500 text-red-500 rounded-lg text-sm">{error}</div>}
 
-          <form onSubmit={handleLogin} className="space-y-5">
-            {/* Email Field */}
-            <div className="space-y-1.5">
-              <label className="text-sm font-semibold text-slate-700 ml-1">Email Address</label>
+        <form onSubmit={handleLogin} className="space-y-5">
+          <div>
+            <label className="text-xs font-bold text-slate-400 uppercase">Email Address</label>
+            <input
+              type="email"
+              className="w-full px-4 py-3 bg-slate-700 border border-slate-600 text-white rounded-xl focus:ring-2 focus:ring-blue-500 outline-none"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+            />
+          </div>
+
+          <div>
+            <label className="text-xs font-bold text-slate-400 uppercase">Password</label>
+            <div className="relative">
               <input
-                type="email"
-                className="w-full px-4 py-3.5 bg-white border border-slate-200 rounded-xl outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 transition-all placeholder:text-slate-400"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                type={showPassword ? "text" : "password"}
+                className="w-full px-4 py-3 bg-slate-700 border border-slate-600 text-white rounded-xl focus:ring-2 focus:ring-blue-500 outline-none"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
                 required
-                placeholder="partner@company.com"
               />
-            </div>
-
-            {/* Password Field */}
-            <div className="space-y-1.5">
-              <div className="flex justify-between items-center px-1">
-                <label className="text-sm font-semibold text-slate-700">Password</label>
-                <span className="text-xs text-indigo-600 font-bold cursor-pointer hover:underline">Forgot?</span>
-              </div>
-              <div className="relative group">
-                <input
-                  type={showPassword ? "text" : "password"}
-                  className="w-full px-4 py-3.5 bg-white border border-slate-200 rounded-xl outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 transition-all placeholder:text-slate-400"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  required
-                  placeholder="••••••••"
-                />
-                <button
-                  type="button"
-                  className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-indigo-600 transition-colors"
-                  onClick={() => setShowPassword(!showPassword)}
-                >
-                  {showPassword ? <EyeSlash size={20} /> : <Eye size={20} />}
-                </button>
-              </div>
-            </div>
-
-            {/* Submit Button */}
-            <button 
-              type="submit" 
-              className="w-full bg-slate-900 hover:bg-black text-white py-4 rounded-xl font-bold text-lg transition-all active:scale-[0.98] disabled:opacity-70 disabled:cursor-not-allowed shadow-xl shadow-slate-200 flex items-center justify-center gap-2"
-              disabled={loading}
-            >
-              {loading ? (
-                <>
-                  <svg className="animate-spin h-5 w-5 text-white" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                  </svg>
-                  <span>Verifying Account...</span>
-                </>
-              ) : "Access Dashboard"}
-            </button>
-          </form>
-
-          {/* Footer Link */}
-          <div className="mt-8 pt-6 border-t border-slate-100 text-center">
-            <p className="text-slate-500 font-medium">
-              New Partner?{" "}
-              <button 
-                onClick={() => navigate("/partner-plans")} 
-                className="text-indigo-600 font-bold hover:underline decoration-2 underline-offset-4"
-              >
-                Join Network
+              <button type="button" className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400" onClick={() => setShowPassword(!showPassword)}>
+                {showPassword ? <EyeSlash size={20} /> : <Eye size={20} />}
               </button>
-            </p>
+            </div>
           </div>
-        </div>
 
-        <p className="mt-8 text-center text-slate-400 text-xs tracking-wide uppercase font-bold">
-          Secure Partner Access System
-        </p>
+          <button disabled={loading} className="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-4 rounded-xl transition-all shadow-lg">
+            {loading ? "Verifying..." : "Access Dashboard"}
+          </button>
+        </form>
       </div>
     </div>
   );

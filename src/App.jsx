@@ -16,6 +16,7 @@ import ProtectedAdminRoute from "./components/ProtectedAdminRoute";
 import ProtectedPartnerRoute from "./components/ProtectedPartnerRoute";
 import TransferMoney from "./pages/user/TransferMoney";
 import ProtectedUserRoute from "./pages/user/ProtectedRoute";
+import LoanSanctionPredictor from "./pages/LoanSanctionPredictor";
 
 /* --- LAZY LOADED PAGES --- */
 
@@ -69,6 +70,7 @@ const CardsTool = lazy(() => import("./pages/tools/CardsTool"));
 const Transfers = lazy(() => import("./pages/tools/Transfers"));
 const Business = lazy(() => import("./pages/tools/Business"));
 const Global = lazy(() => import("./pages/tools/Global"));
+const ProductPage= lazy(()=>import("./pages/user/ProductPage"))
 
 
 export default function App() {
@@ -146,21 +148,27 @@ export default function App() {
 
 
               <Route path="/user" element={<UserLayout />}>
-                 
-                  <Route index element={<UserDashboard />} />
-                  <Route path="dashboard" element={<UserDashboard />} />
-                  <Route path="profile" element={<Profile />} />
-                  <Route path="transactions" element={<Transactions />} />
-                  <Route path="loans" element={<Loans />} />
-                  <Route path="transfer" element={<TransferMoney />} />
-                  <Route path="cards" element={<Cards />} />
-                  <Route path="feedback" element={<Feedback />} />
-                  <Route path="payments" element={<Payments />} />
-                  <Route path="rewards" element={<Rewards />} />
-                  <Route path="international" element={<InternationalTransfer />} />
-                  <Route path="notifications" element={<Notifications />} />
-                </Route>
-              
+
+                <Route index element={<UserDashboard />} />
+                <Route path="dashboard" element={<UserDashboard />} />
+                <Route path="profile" element={<Profile />} />
+                <Route path="transactions" element={<Transactions />} />
+                <Route path="loans" element={<Loans />} />
+                <Route path="transfer" element={<TransferMoney />} />
+                <Route path="cards" element={<Cards />} />
+                <Route path="feedback" element={<Feedback />} />
+                <Route path="payments" element={<Payments />} />
+                <Route path="rewards" element={<Rewards />} />
+                <Route path="international" element={<InternationalTransfer />} />
+                <Route path="notifications" element={<Notifications />} />
+                <Route path="schemes" element={<ProductPage />} />
+                <Route path="investments" element={<ProductPage />} />
+                <Route path="credit-cards" element={<ProductPage />} />
+                <Route path="debit-cards" element={<ProductPage />}/>
+              </Route>
+
+            
+              <Route path="/load-predict" element={<LoanSanctionPredictor/>}/>
 
 
               {/* ❌ FALLBACK */}

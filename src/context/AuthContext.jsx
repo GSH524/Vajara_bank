@@ -11,17 +11,17 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // 1. Restore Admin Session (Sync)
+    // 1. SYNC RESTORATION: Read storage immediately to prevent logout on refresh
     const savedAdmin = localStorage.getItem("adminUser");
-    if (savedAdmin) {
-      setAdmin(JSON.parse(savedAdmin));
-    }
+    if (savedAdmin) setAdmin(JSON.parse(savedAdmin));
 
-    // 2. Firebase Auth Listener
+    const savedLegacy = localStorage.getItem("legacyUser");
+    if (savedLegacy) setUser(JSON.parse(savedLegacy));
+
+    // 2. Firebase Auth Listener for real-time profile updates
     const unsubscribeUser = onAuthStateChanged(userAuth, async (firebaseUser) => {
       try {
         if (firebaseUser) {
-          // If Firebase has a user, fetch their detailed profile
           const userDoc = await getDoc(doc(userDB, 'users', firebaseUser.uid));
 
           if (userDoc.exists()) {
@@ -29,7 +29,7 @@ export const AuthProvider = ({ children }) => {
             const userProfile = {
               uid: firebaseUser.uid,
               email: firebaseUser.email,
-              role: "user", // Default role
+              role: "user",
               displayName: `${userData.firstName || ""} ${userData.lastName || ""}`.trim() || "User",
               ...userData
             };
@@ -44,18 +44,14 @@ export const AuthProvider = ({ children }) => {
             });
           }
         } else {
-          // If NO Firebase user, check for Legacy user session
-          const savedLegacy = localStorage.getItem("legacyUser");
-          if (savedLegacy) {
-            setUser(JSON.parse(savedLegacy));
-          } else {
+          // Only clear state if no persistent legacy session exists
+          if (!localStorage.getItem("legacyUser")) {
             setUser(null);
           }
         }
       } catch (e) {
         console.error("Auth Refresh Error:", e);
       } finally {
-        // Stop loading ONLY after session checks are complete
         setLoading(false);
       }
     });
@@ -67,6 +63,8 @@ export const AuthProvider = ({ children }) => {
 
   const loginUser = (userData) => {
     setUser(userData);
+    // FIX: Persist session immediately during login
+    localStorage.setItem("legacyUser", JSON.stringify(userData));
   };
 
   const loginLegacyUser = (legacyData) => {
@@ -116,7 +114,6 @@ export const AuthProvider = ({ children }) => {
         isAdminLoggedIn: Boolean(admin),
       }}
     >
-      {/* Do not render children until loading is false to prevent false redirects */}
       {!loading ? children : (
         <div className="flex h-screen w-full items-center justify-center bg-[#020617]">
           <div className="flex flex-col items-center gap-4">

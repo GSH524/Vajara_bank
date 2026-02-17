@@ -2,32 +2,32 @@ import React from 'react';
 import { Gift, Briefcase, CreditCard, Cash, Star } from 'react-bootstrap-icons';
 
 const RECOM_DATA = {
-  'Low': { // Mapping to High Value
+  'Low': {
     segmentLabel: 'High Value Customers',
-    scheme: { name: 'Platinum / Zero Balance', benefits: ['Priority banking services', 'Zero balance requirement', 'Higher transaction limits'] },
-    investment: { name: 'Equity Mutual Funds', benefits: ['High long-term wealth', 'Inflation-beating growth', 'Aggressive growth'] },
-    credit: { name: 'Vajra Infinite Credit', type: 'Ultra Premium', benefits: ['Limit ₹10L+', 'Unlimited lounge access', '5X reward points'] },
-    debit: { name: 'Vajra Platinum Debit', benefits: ['Withdrawal ₹2L/day', 'Zero annual fee', 'Dedicated Manager'] }
+    scheme: { name: 'Platinum / Zero Balance', category: 'Scheme', benefits: ['Priority services', 'Zero balance', 'High limits'] },
+    investment: { name: 'Equity Mutual Funds', category: 'Investment', benefits: ['High wealth growth', 'Inflation beating', 'Aggressive'] },
+    credit: { name: 'Vajra Infinite Credit', category: 'Credit Card', benefits: ['Limit ₹10L+', 'Lounge access', '5X rewards'] },
+    debit: { name: 'Vajra Platinum Debit', category: 'Debit Card', benefits: ['₹2L/day withdrawal', 'Zero fee', 'Dedicated Manager'] }
   },
   'Medium': {
     segmentLabel: 'Medium Value Customers',
-    scheme: { name: 'Salary Account Benefits', benefits: ['Zero balance salary', 'Auto debit EMI facility', 'Personal Accident Cover'] },
-    investment: { name: 'Hybrid Mutual Funds', benefits: ['Balanced risk/return', 'Equity + debt stability', 'Lower volatility'] },
-    credit: { name: 'Vajra Gold Credit', type: 'Gold Card', benefits: ['Interest-free 45 days', 'Cashback on dining', 'EMI conversion'] },
-    debit: { name: 'Vajra Gold Debit', benefits: ['Free 5 ATM txns/month', 'Low annual fee', 'Shopping discounts'] }
+    scheme: { name: 'Salary Account Benefits', category: 'Scheme', benefits: ['Zero balance salary', 'Auto EMI', 'Accident Cover'] },
+    investment: { name: 'Hybrid Mutual Funds', category: 'Investment', benefits: ['Balanced risk', 'Stable growth', 'Low volatility'] },
+    credit: { name: 'Vajra Gold Credit', category: 'Credit Card', benefits: ['Interest-free 45d', 'Cashback', 'EMI facility'] },
+    debit: { name: 'Vajra Gold Debit', category: 'Debit Card', benefits: ['Free ATM txns', 'Low annual fee', 'Shopping discounts'] }
   },
-  'High': { // Mapping to Low Value
+  'High': {
     segmentLabel: 'Credit Builder Program',
-    scheme: { name: 'Credit Repair Program', benefits: ['Improve CIBIL score', 'Financial discipline', 'Secure limit'] },
-    investment: { name: 'Debt Mutual Funds', benefits: ['Capital protection', 'Stable income', 'Low market risk'] },
-    credit: { name: 'Vajra Credit Builder', type: 'Secured Card', benefits: ['Easy approval (FD backed)', 'Improves credit score', 'Low annual fee'] },
-    debit: { name: 'Vajra Basic Debit', benefits: ['Zero min balance', 'Secure PIN txns', 'Very low fee'] }
+    scheme: { name: 'Credit Repair Program', category: 'Scheme', benefits: ['Improve CIBIL', 'Discipline', 'Secure limit'] },
+    investment: { name: 'Debt Mutual Funds', category: 'Investment', benefits: ['Capital protection', 'Stable income', 'Low risk'] },
+    credit: { name: 'Vajra Credit Builder', category: 'Credit Card', benefits: ['Easy approval (FD)', 'Improves score', 'Low fee'] },
+    debit: { name: 'Vajra Basic Debit', category: 'Debit Card', benefits: ['Zero min balance', 'Secure PIN txns', 'Very low fee'] }
   }
 };
 
-const Card = ({ title, subtitle, items, icon: Icon, color, onApply }) => (
-  <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 hover:border-slate-700 transition-all flex flex-col h-full group">
-    <div className={`w-10 h-10 rounded-xl ${color} flex items-center justify-center mb-4 group-hover:scale-110 transition-transform`}>
+const Card = ({ title, subtitle, items, icon: Icon, color, category, onApply }) => (
+  <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 flex flex-col h-full">
+    <div className={`w-10 h-10 rounded-xl ${color} flex items-center justify-center mb-4`}>
       <Icon size={20} className="text-white" />
     </div>
     <p className="text-[10px] font-bold uppercase tracking-tighter text-slate-500 mb-1">{subtitle}</p>
@@ -40,7 +40,7 @@ const Card = ({ title, subtitle, items, icon: Icon, color, onApply }) => (
       ))}
     </ul>
     <button 
-      onClick={() => onApply(title)}
+      onClick={() => onApply(title, category)}
       className="mt-5 w-full py-2 bg-slate-800 hover:bg-blue-600 text-white text-xs font-bold rounded-lg transition-colors">
       Apply Now
     </button>
@@ -48,32 +48,18 @@ const Card = ({ title, subtitle, items, icon: Icon, color, onApply }) => (
 );
 
 export default function RecommendationSection({ riskLevel, onApply }) {
-  // Logic: Map ML risk to data keys
   const data = RECOM_DATA[riskLevel];
 
-  if (!data || riskLevel === "Analyzing..." || riskLevel === "Server Offline") {
-    return (
-      <div className="mt-12 p-8 border border-dashed border-slate-800 rounded-3xl text-center">
-        <p className="text-slate-500 text-sm animate-pulse">Running AI Recommendation Engine...</p>
-      </div>
-    );
-  }
+  if (!data || riskLevel === "Analyzing...") return <div className="mt-12 text-slate-500">AI Recommendation Engine Running...</div>;
 
   return (
-    <div className="mt-12 animate-in fade-in slide-in-from-bottom-4 duration-700">
-      <div className="flex items-center gap-3 mb-6">
-        <div className="bg-amber-500/10 p-2 rounded-lg"><Star className="text-amber-500" size={20} /></div>
-        <div>
-          <h2 className="text-xl font-bold text-white">AI-Driven Recommendations</h2>
-          <p className="text-slate-500 text-xs uppercase tracking-widest">Profile Risk: {riskLevel} • Targeted for {data.segmentLabel}</p>
-        </div>
-      </div>
-
+    <div className="mt-12">
+      <h2 className="text-xl font-bold text-white mb-6">AI-Driven Recommendations</h2>
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <Card title={data.scheme.name} subtitle="Banking Scheme" items={data.scheme.benefits} icon={Gift} color="bg-blue-600" onApply={onApply} />
-        <Card title={data.investment.name} subtitle="Investment" items={data.investment.benefits} icon={Briefcase} color="bg-emerald-600" onApply={onApply} />
-        <Card title={data.credit.name} subtitle={data.credit.type} items={data.credit.benefits} icon={CreditCard} color="bg-purple-600" onApply={onApply} />
-        <Card title={data.debit.name} subtitle="Card Upgrade" items={data.debit.benefits} icon={Cash} color="bg-orange-600" onApply={onApply} />
+        <Card title={data.scheme.name} category="Scheme" subtitle="Banking Scheme" items={data.scheme.benefits} icon={Gift} color="bg-blue-600" onApply={onApply} />
+        <Card title={data.investment.name} category="Investment" subtitle="Investment" items={data.investment.benefits} icon={Briefcase} color="bg-emerald-600" onApply={onApply} />
+        <Card title={data.credit.name} category="Credit Card" subtitle="Credit Card" items={data.credit.benefits} icon={CreditCard} color="bg-purple-600" onApply={onApply} />
+        <Card title={data.debit.name} category="Debit Card" subtitle="Card Upgrade" items={data.debit.benefits} icon={Cash} color="bg-orange-600" onApply={onApply} />
       </div>
     </div>
   );

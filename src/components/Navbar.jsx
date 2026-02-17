@@ -76,7 +76,7 @@ export default function Navbar() {
 
   return (
     <>
-      <nav className="sticky top-0 z-[100] flex items-center justify-between px-6 lg:px-12 py-4 bg-[#020617]/80 border-b border-white/5 backdrop-blur-xl">
+      <nav className="sticky top-0 z-[100] flex items-center justify-between px-6 lg:px-12 py-4 bg-slate-950 border-b border-white/5 backdrop-blur-xl">
 
         {/* LOGO */}
         <Link to="/" className="flex items-center gap-4 group relative">

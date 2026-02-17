@@ -1,6 +1,7 @@
 import { Outlet, useNavigate, Navigate } from "react-router-dom";
 import AdminNavbar from "../components/AdminNavbar";
 import { useAuth } from "../context/AuthContext";
+import Footer from "../components/Footer"
 
 export default function AdminLayout() {
   const { admin, logoutAdmin, loading } = useAuth(); // Added loading
@@ -32,6 +33,7 @@ export default function AdminLayout() {
           <Outlet />
         </div>
       </main>
+      <Footer/>
     </div>
   );
 }

@@ -1,6 +1,7 @@
 import { Outlet, useNavigate, Navigate } from "react-router-dom";
 import UserNavbar from "../components/UserNavbar";
 import { useAuth } from "../context/AuthContext";
+import Footer from "../components/Footer";
 
 export default function UserLayout() {
   // Destructure loading from context to ensure the component waits for restoration
@@ -37,6 +38,7 @@ export default function UserLayout() {
           <Outlet />
         </div>
       </main>
+      <Footer/>
     </div>
   );
 }

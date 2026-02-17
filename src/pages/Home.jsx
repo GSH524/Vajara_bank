@@ -4,6 +4,8 @@ import FeatureCard from "../components/FeatureCard";
 import FeaturesShowcase from "../components/FeaturesShowcase";
 import features from "../data/featuresData";
 import AdBanner from "../components/AdBanner";
+// 1. Import your new BusinessAd component
+import BusinessAd from "./BusinessAd"; 
 
 const heroImages = [
   "https://cdn.prod.website-files.com/67b7abfbb037e687d0a415ec/67db95411df971225cd735e7_emerging_technologies_in_finance.webp",
@@ -35,10 +37,14 @@ export default function Home() {
 
   return (
     <div className="bg-slate-950 min-h-screen text-slate-300 pb-20 lg:pb-0">
+      
+      {/* 2. Place the BusinessAd here. 
+          It is 'fixed' so it will float over everything regardless of where it is in the code. */}
+      <BusinessAd />
+
       {/* ================= HERO SECTION ================= */}
-      {/* Adjusted height: h-[85vh] ensures it fits nicely on tall mobile screens */}
       <AdBanner/>
-      <section className="relative h-[85vh] md:h- overflow-hidden">
+      <section className="relative h-[85vh] overflow-hidden">
         <div 
           className="absolute inset-0 flex transition-transform duration-1000 ease-in-out"
           style={{ transform: `translateX(-${slide * 100}%)` }}
@@ -67,7 +73,6 @@ export default function Home() {
             security and powerful financial tools.
           </p>
           
-          {/* Buttons: Stacked on mobile for better tap targets */}
           <div className="flex flex-col sm:flex-row justify-center gap-3 w-full max-w-xs sm:max-w-none">
             <button 
               className="w-full sm:w-auto px-8 py-4 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-xl transition-all shadow-lg shadow-blue-500/25 active:scale-95"
@@ -83,7 +88,6 @@ export default function Home() {
             </button>
           </div>
 
-          {/* Trust Badges: Scrolling/Wrapping layout */}
           <div className="mt-10 flex flex-wrap justify-center gap-x-6 gap-y-3 text-[12px] md:text-sm font-medium text-white/60">
             <span className="flex items-center gap-1.5 whitespace-nowrap">🔐 RBI-Compliant</span>
             <span className="flex items-center gap-1.5 whitespace-nowrap">🛡️ 256-bit AES</span>
@@ -104,7 +108,6 @@ export default function Home() {
           </p>
         </div>
 
-        {/* Grid: 1 column on mobile, 3 on desktop */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 md:gap-8">
           {features.map((item) => (
             <FeatureCard key={item.id} {...item} />
@@ -120,7 +123,6 @@ export default function Home() {
             <p className="text-sm md:text-base text-slate-400">Select your profile to see relevant tools</p>
           </div>
 
-          {/* Tracks: Stacked on mobile with better spacing */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
             {tracks.map((t) => (
               <div
@@ -140,7 +142,6 @@ export default function Home() {
             ))}
           </div>
 
-          {/* Glass Detail Panel */}
           {active && activeTrack && (
             <div className="p-6 md:p-12 rounded-2xl bg-white/5 border border-white/10 backdrop-blur-xl animate-in fade-in slide-in-from-bottom-4 duration-500">
               <h3 className="text-xl md:text-2xl font-bold text-white mb-4">{activeTrack.detail.heading}</h3>

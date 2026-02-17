@@ -63,34 +63,13 @@ export default function AdminNavbar() {
 
           {/* LOGO & PUBLIC LINKS */}
           <div className="flex items-center gap-8">
-            {/* LOGO */}
-            <Link to="/" className="flex items-center gap-4 group relative">
-              {/* The Logo Image Container with a Glow Effect */}
-              <div className="relative">
-                {/* Background Blur Glow (Hidden on mobile, subtle on desktop) */}
-                <div className="absolute inset-0 bg-indigo-500/20 blur-xl rounded-full group-hover:bg-indigo-500/40 transition-all duration-500" />
-
-                <div className="relative p-1 bg-linear-to-tr rounded-2xl from-white/10 to-white/5 backdrop-blur-md border border-white/10 rounded-2xl shadow-2xl overflow-hidden">
-                  <img
-                    src="/logo.png"
-                    alt="SRK Bank"
-                    className="h-9 w-auto object-contain  rounded-4xl brightness-110 group-hover:scale-110 transition-transform duration-500 ease-out"
-                  />
-                  {/* Animated Shine Effect on Hover */}
-                  <div className="absolute inset-0 w-full h-full bg-linear-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:animate-[shine_1s_ease-in-out] transition-transform" />
-                </div>
+            <Link to="/" className="flex items-center gap-2">
+              <div className="p-2 bg-indigo-600 rounded-lg text-white">
+                <ShieldCheck size={20} />
               </div>
-
-              {/* Text Branding */}
-              <div className="flex flex-col justify-center -space-y-1">
-                <div className="text-2xl font-black tracking-tighter text-white uppercase flex items-center gap-1">
-                  <span className="bg-clip-text text-transparent bg-linear-to-b from-white to-slate-400">VAJRA</span>
-                  <span className="text-indigo-500 drop-shadow-[0_0_8px_rgba(99,102,241,0.5)]">Bank</span>
-                </div>
-                <div className="text-[8px] font-black uppercase tracking-[0.3em] text-slate-500 group-hover:text-indigo-400 transition-colors">
-                  Digital Excellence
-                </div>
-              </div>
+              <span className="text-xl font-black text-white tracking-tighter uppercase italic">
+                VAJRA<span className="text-indigo-500">ADMIN</span>
+              </span>
             </Link>
 
             {/* DESKTOP NAV */}

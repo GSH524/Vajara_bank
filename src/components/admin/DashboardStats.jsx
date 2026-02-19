@@ -3,11 +3,28 @@ import { People, Bank, Activity, Snow, ArrowUpRight } from 'react-bootstrap-icon
 
 export default function DashboardStats({ data }) {
     const totalCustomers = data.length;
-    const frozenCount = data.filter(d => d.isFrozen).length;
-    const activeCount = data.filter(d => d.activeStatus === 'Active').length;
-    const inactiveCount = data.filter(d => d.activeStatus === 'Inactive').length;
 
-    const totalBalance = data.reduce((acc, curr) => acc + curr.balance, 0);
+    // Logic: Check normalized 'isFrozen' flag or the raw 'FreezeAccount' field
+    const frozenCount = data.filter(d => 
+        d.isFrozen === true || 
+        d.raw?.['FreezeAccount'] === true || 
+        d.raw?.['FreezeAccount'] === "True"
+    ).length;
+
+    // Logic: Unified Active/Inactive count checking normalized status and raw 'ActiveStatus'
+    const activeCount = data.filter(d => 
+        d.activeStatus === 'Active' || 
+        d.raw?.['ActiveStatus'] === 'Active'
+    ).length;
+
+    const inactiveCount = totalCustomers - activeCount;
+
+    // Logic: Calculate total balance using normalized 'balance' or raw 'Account Balance'
+    const totalBalance = data.reduce((acc, curr) => {
+        const val = curr.balance || curr.raw?.['Account Balance'] || 0;
+        return acc + Number(val);
+    }, 0);
+
     const formattedBalance = new Intl.NumberFormat('en-IN', {
         style: 'currency',
         currency: 'INR',
@@ -43,10 +60,8 @@ export default function DashboardStats({ data }) {
                         <Activity size={20} />
                     </div>
                 </div>
-                {/* Updated Label Color: Lighter Gray for better visibility */}
                 <p className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em] mb-1">Active Status</p>
                 <div className="flex items-baseline gap-2">
-                    {/* Updated Value Color: Pure White */}
                     <h2 className="text-3xl font-black text-white tracking-tighter">{activeCount}</h2>
                     <span className="text-xs font-bold text-slate-400 italic">/ {inactiveCount} Inactive</span>
                 </div>
@@ -60,7 +75,7 @@ export default function DashboardStats({ data }) {
             <StatCard 
                 label="Frozen Accounts"
                 value={frozenCount.toLocaleString()}
-                trend="Requires Review"
+                trend={frozenCount > 0 ? "Requires Review" : "System Clear"}
                 icon={<Snow size={20} />}
                 color="red"
                 isAlert={frozenCount > 0}
@@ -69,6 +84,7 @@ export default function DashboardStats({ data }) {
     );
 }
 
+// StatCard helper component remains the same as provided in your snippet
 function StatCard({ label, value, trend, icon, color, isHighlight, isAlert }) {
     const styles = {
         indigo: {
@@ -95,7 +111,6 @@ function StatCard({ label, value, trend, icon, color, isHighlight, isAlert }) {
 
     return (
         <div className={`relative group overflow-hidden bg-slate-900/50 backdrop-blur-md border border-white/10 p-6 rounded-3xl shadow-2xl transition-all ${currentStyle.border}`}>
-            {/* Background Glow */}
             <div className={`absolute -right-4 -top-4 w-24 h-24 rounded-full blur-3xl opacity-10 ${currentStyle.glow} group-hover:opacity-30 transition-opacity`}></div>
             
             <div className="flex justify-between items-start mb-4 relative z-10">
@@ -109,12 +124,10 @@ function StatCard({ label, value, trend, icon, color, isHighlight, isAlert }) {
                 )}
             </div>
 
-            {/* Label: Mid-range gray for hierarchy */}
             <p className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em] mb-1 relative z-10">
                 {label}
             </p>
             
-            {/* Primary Value: Bright White or Warning Red */}
             <h2 className={`text-3xl font-black tracking-tighter mb-4 relative z-10 ${isAlert ? 'text-red-400 drop-shadow-[0_0_10px_rgba(248,113,113,0.3)]' : 'text-white'}`}>
                 {value}
             </h2>

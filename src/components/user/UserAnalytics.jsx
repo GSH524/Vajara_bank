@@ -152,7 +152,7 @@ export default function UserAnalytics({ transactions = [], currentProfile = null
                     </ResponsiveContainer>
                 </AnalyticsCard>
 
-                <CreditUtilization used={metrics.creditUsed} limit={metrics.creditLimit} />
+                
 
                 <AnalyticsCard title="Balance Stability">
                     <ResponsiveContainer width="100%" height="100%">

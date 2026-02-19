@@ -102,7 +102,7 @@ const LoanSanctionPredictor = () => {
       <div className="bg-slate-800 rounded-3xl shadow-2xl w-full max-w-4xl overflow-hidden border border-slate-700">
         <div className="bg-gradient-to-r from-blue-600 to-indigo-700 p-6 sm:p-10 text-white text-center">
           <h1 className="text-2xl sm:text-4xl font-black uppercase tracking-tight">
-            Loan Sanction Engine
+            AI-Powered Loan Sanction Engine
           </h1>
           <p className="text-blue-100 text-xs sm:text-sm mt-2 font-medium opacity-90">
             Real‑Time AI Eligibility & EMI Calculation

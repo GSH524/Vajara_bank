@@ -17,7 +17,8 @@ import {
   CashStack,
   GraphUp,
   Megaphone,
-  Cpu
+  Cpu,
+  Bell // Added Bell for Notification
 } from "react-bootstrap-icons";
 import { useAuth } from "../context/AuthContext";
 
@@ -25,12 +26,11 @@ export default function AdminNavbar() {
   const { user, logoutUser } = useAuth();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
-  const [isConsoleOpen, setIsConsoleOpen] = useState(false); // New state for click-based dropdown
+  const [isConsoleOpen, setIsConsoleOpen] = useState(false);
   const profileRef = useRef(null);
   const consoleRef = useRef(null);
   const navigate = useNavigate();
 
-  // Close dropdowns when clicking outside
   useEffect(() => {
     function handleClickOutside(event) {
       if (profileRef.current && !profileRef.current.contains(event.target)) {
@@ -60,6 +60,11 @@ export default function AdminNavbar() {
     { name: "Ads", path: "/admin/ads", icon: <Megaphone />, desc: "Campaigns" },
   ];
 
+  const navLinkClass = ({ isActive }) => 
+    `px-4 py-2 text-xs font-black uppercase tracking-widest transition-all ${
+      isActive ? "text-white bg-white/5 rounded-lg" : "text-slate-400 hover:text-white"
+    }`;
+
   const mobileTabLink = ({ isActive }) =>
     `flex flex-col items-center justify-center gap-1 flex-1 transition-all duration-300 ${
       isActive ? "text-indigo-400 scale-110" : "text-slate-500"
@@ -80,12 +85,14 @@ export default function AdminNavbar() {
               </span>
             </Link>
 
+            {/* LEFT LINKS: Home, About, Contact */}
             <div className="hidden lg:flex items-center gap-1">
-              <Link to="/" className="px-4 py-2 text-xs font-black uppercase tracking-widest text-slate-400 hover:text-white transition-all">Home</Link>
+              <NavLink to="/" className={navLinkClass}>Home</NavLink>
+              <NavLink to="/about" className={navLinkClass}>About</NavLink>
+              <NavLink to="/contact" className={navLinkClass}>Contact</NavLink>
               
               <div className="h-4 w-[1px] bg-white/10 mx-2" />
 
-              {/* CLICK-BASED MEGA-DROPDOWN */}
               <div className="relative" ref={consoleRef}>
                 <button 
                   onClick={() => setIsConsoleOpen(!isConsoleOpen)}
@@ -132,8 +139,14 @@ export default function AdminNavbar() {
             </div>
           </div>
 
-          {/* RIGHT SIDE */}
+          {/* RIGHT SIDE: Notifications + Profile */}
           <div className="flex items-center gap-4">
+            {/* NOTIFICATION ICON */}
+            <button className="relative p-2 text-slate-400 hover:text-indigo-400 hover:bg-white/5 rounded-full transition-all group">
+              <Bell size={20} />
+              <span className="absolute top-2 right-2 w-2 h-2 bg-indigo-500 rounded-full border-2 border-[#020617] group-hover:animate-pulse"></span>
+            </button>
+
             <div className="relative" ref={profileRef}>
               <button
                 onClick={() => setIsProfileOpen(!isProfileOpen)}
@@ -179,6 +192,10 @@ export default function AdminNavbar() {
             </div>
             <div className="flex flex-col gap-3">
               <Link to="/" onClick={() => setIsMobileMenuOpen(false)} className="p-4 rounded-2xl bg-white/5 text-slate-400 font-black uppercase tracking-widest text-[10px]"><House size={18} className="inline mr-3"/> Home</Link>
+              {/* Added Mobile Links */}
+              <Link to="/about" onClick={() => setIsMobileMenuOpen(false)} className="p-4 rounded-2xl bg-white/5 text-slate-400 font-black uppercase tracking-widest text-[10px]"><InfoCircle size={18} className="inline mr-3"/> About</Link>
+              <Link to="/contact" onClick={() => setIsMobileMenuOpen(false)} className="p-4 rounded-2xl bg-white/5 text-slate-400 font-black uppercase tracking-widest text-[10px]"><Envelope size={18} className="inline mr-3"/> Contact</Link>
+              
               <div className="h-px bg-white/5 my-4" />
               <p className="text-[9px] font-black text-indigo-500 uppercase tracking-widest ml-4 mb-2">Management</p>
               {adminItems.map(item => (
@@ -203,7 +220,6 @@ export default function AdminNavbar() {
           <span className="text-[8px] font-black uppercase tracking-widest">About</span>
         </NavLink>
 
-        {/* Console Hub Button in Center */}
         <button 
           onClick={() => setIsMobileMenuOpen(true)}
           className="flex flex-col items-center justify-center -mt-10"

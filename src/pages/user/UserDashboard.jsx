@@ -3,12 +3,7 @@ import { useNavigate, NavLink } from 'react-router-dom';
 import { useAuth } from "../../context/AuthContext";
 import UserAnalytics from '../../components/user/UserAnalytics';
 import RecommendationSection from "../../pages/user/Recommendations";
-import {
-  ArrowUpRight, Plus, Activity, PersonBadge,
-  ArrowDownLeft, Wallet, Copy
-} from 'react-bootstrap-icons';
-
-// Firebase Imports
+import { ArrowUpRight, Plus, Activity, PersonBadge, ArrowDownLeft, Wallet, Copy } from 'react-bootstrap-icons';
 import { userDB } from "../../firebaseUser";
 import { collection, query, where, onSnapshot } from "firebase/firestore";
 import CreditUtilization from '../../components/user/CreditUtilization';
@@ -16,14 +11,10 @@ import CreditUtilization from '../../components/user/CreditUtilization';
 export default function UserDashboard() {
   const navigate = useNavigate();
   const { user, loading: authLoading } = useAuth();
-
-  // Data States
   const [firestoreBankData, setFirestoreBankData] = useState([]);
   const [firestoreNewUserData, setFirestoreNewUserData] = useState([]);
   const [firebaseTxns, setFirebaseTxns] = useState([]);
   const [dataLoading, setDataLoading] = useState(true);
-
-  // AI Risk & CIBIL States
   const [riskLevel, setRiskLevel] = useState("Analyzing...");
   const [displayRisk, setDisplayRisk] = useState("Analyzing...");
   const [rawLatestRecord, setRawLatestRecord] = useState(null);
@@ -32,11 +23,8 @@ export default function UserDashboard() {
   const [isCheckingCibil, setIsCheckingCibil] = useState(false);
   const [animatedScore, setAnimatedScore] = useState(0);
 
-  // 1. Dual-Collection Listeners
   useEffect(() => {
     if (!user?.email) return;
-
-    // Query Established Users (users1)
     const q1 = query(collection(userDB, "users1"), where("Email", "==", user.email));
     const unsub1 = onSnapshot(q1, (snapshot) => {
       const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
@@ -44,15 +32,13 @@ export default function UserDashboard() {
       if (data.length > 0) setDataLoading(false);
     });
 
-    // Query New Users (users) - MATCHING YOUR FIREBASE SCHEMA
     const q2 = query(collection(userDB, "users"), where("Email", "==", user.email));
     const unsub2 = onSnapshot(q2, (snapshot) => {
       const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
       setFirestoreNewUserData(data);
-      setDataLoading(false); // Stop loading once we check this collection
+      setDataLoading(false);
     });
 
-    // Query Real-time Transfers
     const q3 = query(collection(userDB, "transfer"), where("senderEmail", "==", user.email.toLowerCase()));
     const unsub3 = onSnapshot(q3, (snapshot) => {
       const txns = snapshot.docs.map(doc => ({
@@ -64,21 +50,16 @@ export default function UserDashboard() {
       }));
       setFirebaseTxns(txns);
     });
-
     return () => { unsub1(); unsub2(); unsub3(); };
   }, [user]);
 
-  // 2. Data Mapping Logic (Strictly following your provided Firebase fields)
   const userData = useMemo(() => {
     if (!user) return null;
-
     const bankRecord = firestoreBankData[0];
     const newRecord = firestoreNewUserData[0];
-
     const activeRecord = bankRecord || newRecord;
     if (!activeRecord) return null;
 
-    // Map historical transactions if available
     const historicalTxns = firestoreBankData.filter(item => item.TransactionID).map(item => ({
       id: item.TransactionID,
       type: item["Transaction Type"] === "Withdrawal" ? 'Transfer' : 'Deposit',
@@ -92,44 +73,32 @@ export default function UserDashboard() {
     }
 
     return {
-      // Identity - Using exact keys from your Firebase
       firstName: activeRecord["First Name"] || "User",
       lastName: activeRecord["Last Name"] || "",
       fullName: `${activeRecord["First Name"] || ""} ${activeRecord["Last Name"] || ""}`.trim(),
       email: activeRecord["Email"],
-      profilePic: activeRecord["profilePic"] || null, 
-      
-      // Personal Details
+      profilePic: activeRecord["profilePic"] || null,
       address: activeRecord["Address"] || "Not Set",
       contact: activeRecord["Contact Number"] || "N/A",
       gender: activeRecord["Gender"] || "N/A",
       age: activeRecord["Age"] || "N/A",
-      
-      // Account Logic
       customerId: activeRecord["Customer ID"] || "Pending",
       accountNumber: activeRecord["Account_Number"] || "Processing...",
       accountType: activeRecord["Account Type"] || "Savings",
       branchId: activeRecord["Branch ID"] || "Main",
       ifscCode: activeRecord["IFSC Code"] || "VAJ000524",
-      
-      // Money & Metrics
       balance: Number(activeRecord["Account Balance"] || 0),
       rewards: Number(activeRecord["Rewards Points"] || 0),
       cibil: Number(activeRecord["CIBIL_Score"] || 0),
       panCard: activeRecord["PAN_Card"] || "N/A",
       creditLimit: Number(activeRecord["Credit Limit"] || 50000),
       ccBalance: Number(activeRecord["Credit Card Balance"] || 0),
-      
-      // Status
       status: activeRecord["ActiveStatus"] || "Pending",
       isExistedUser: !!bankRecord,
-      
-      // Transaction Merging
       transactions: [...firebaseTxns, ...historicalTxns].sort((a, b) => new Date(b.date) - new Date(a.date))
     };
   }, [firestoreBankData, firestoreNewUserData, user, firebaseTxns, rawLatestRecord]);
 
-  // AI & Risk logic
   useEffect(() => {
     if (rawLatestRecord) {
       setIsAnalyzing(true);
@@ -185,8 +154,6 @@ export default function UserDashboard() {
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-200 p-4 md:p-8 font-sans">
-      
-      {/* HEADER */}
       <div className="mb-8 flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div className="flex items-center gap-4">
           <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-indigo-600 to-violet-600 flex items-center justify-center text-white font-black text-2xl shadow-xl overflow-hidden">
@@ -206,7 +173,6 @@ export default function UserDashboard() {
         </button>
       </div>
 
-      {/* STATS GRID */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
         <div className="lg:col-span-2 bg-gradient-to-br from-indigo-600 to-blue-700 p-6 rounded-[2rem] shadow-xl relative overflow-hidden">
           <div className="relative z-10">
@@ -236,7 +202,6 @@ export default function UserDashboard() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* PROFILE CREDENTIALS */}
         <div className="lg:col-span-1">
           <div className="bg-slate-900 border border-white/5 rounded-[2rem] p-6">
             <h4 className="text-white font-bold mb-6 uppercase text-[10px] tracking-[0.2em] opacity-40 flex items-center gap-2">
@@ -270,7 +235,6 @@ export default function UserDashboard() {
                 </div>
               </div>
 
-              {/* CIBIL GAUGE */}
               <div className="py-4 min-h-[140px] flex flex-col items-center justify-center bg-slate-950/50 rounded-2xl border border-white/5 mt-4">
                 {!showCibil && !isCheckingCibil && (
                   <button onClick={handleCibilCheck} className="flex items-center gap-2 px-6 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-[10px] font-black uppercase rounded-full transition-all shadow-lg">
@@ -298,7 +262,6 @@ export default function UserDashboard() {
           </div>
         </div>
 
-        {/* ACTIVITY LOG */}
         <div className="lg:col-span-2">
           <div className="bg-slate-900 border border-white/5 rounded-[2rem] overflow-hidden h-full">
             <div className="px-8 py-6 border-b border-white/5 flex justify-between items-center bg-white/5">
@@ -327,15 +290,11 @@ export default function UserDashboard() {
         </div>
       </div>
 
-      {/* SECTIONS */}
       <div className="mt-8">
         <RecommendationSection riskLevel={displayRisk} onApply={handleApply} />
       </div>
       <div className="mt-8">
-        <CreditUtilization
-          used={userData?.ccBalance || 0}
-          limit={userData?.creditLimit || 50000}
-        />
+        <CreditUtilization used={userData?.ccBalance || 0} limit={userData?.creditLimit || 50000} />
       </div>
       <div className="mt-8">
         <UserAnalytics transactions={userData?.transactions || []} currentProfile={userData} />

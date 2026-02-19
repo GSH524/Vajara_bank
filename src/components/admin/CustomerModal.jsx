@@ -71,17 +71,23 @@ export default function CustomerModal({ customer, onAction, onClose }) {
 
     const saveChanges = async () => {
         if (!docRef) {
-            alert("Cannot update: Customer record is not fully synced with Firebase.");
+            alert("Cannot update: Customer record is not fully synced.");
             return;
         }
         setLoading(true);
         try {
-            await updateDoc(docRef, editForm);
+            const sanitizedData = {};
+            Object.keys(editForm).forEach(key => {
+                const safeKey = key.replace(/\//g, '_'); 
+                sanitizedData[safeKey] = editForm[key];
+            });
+
+            await updateDoc(docRef, sanitizedData);
             setFirebaseData(editForm);
             setIsEditing(false);
         } catch (error) {
-            console.error("Error updating document:", error);
-            alert("Failed to save changes.");
+            console.error("Firebase Update Error:", error);
+            alert(`Failed to save: ${error.message}`);
         } finally {
             setLoading(false);
         }
@@ -102,8 +108,6 @@ export default function CustomerModal({ customer, onAction, onClose }) {
             address: src.Address || "N/A",
             pan: src.PAN_Card || "—",
             house: src.HouseOwnership || "—",
-            
-            // NEW FIELDS INTEGRATED HERE
             nomineeName: src.nomineeName || "—",
             nomineeRelation: src.nomineeRelation || "—",
             status: src.status || src.ActiveStatus || "—",
@@ -114,46 +118,31 @@ export default function CustomerModal({ customer, onAction, onClose }) {
             branchId: src["Branch ID"] || "—",
             txnAmount: Number(src["Transaction Amount"] || 0),
             txnType: src["Transaction Type"] || "—",
-            txnReason: src["Transaction_Reason"] || "—",
-            
             balance: Number(src["Account Balance"] || 0),
             accType: src["Account Type"] || "Savings",
             accNumber: src.Account_Number || "N/A",
             income: Number(src.AnnualIncome || 0),
             cibil: Number(src.CIBIL_Score || 0),
             rewards: src["Rewards Points"] || 0,
-            
             cardType: src["Card Type"] || "—",
             cardLimit: src["Credit Limit"] || 0,
-            cardRatio: src.Card_Balance_to_Limit_Ratio || 0,
-            
             loanAmount: src["Loan Amount"] || 0,
-            loanRequested: src.LoanAmountRequested || 0,
-            activeLoans: src.Active_Loan_Count || 0,
-            existingLoans: src.ExistingLoansCount || 0,
-            loanOutstanding: src.Total_Loan_Outstanding || 0,
-            latePayments: src.LatePaymentsCount || 0,
-            collateral: src.CollateralValue || 0,
             interest: src["Interest Rate"] || 0,
-            
             lastTxnDate: src.Last_Transaction_Date || "—",
             paymentDue: src["Payment Due Date"] || "—",
-            tenure: src.Relationship_Tenure_Years || 0,
-            activeProducts: src.Total_Active_Products || 0,
-            
             isFrozen: src.FreezeAccount === true || src.FreezeAccount_Flag === 1,
             profilePic: src.profilePic || "",
             idProof: src.idProofDoc || ""
         };
     }, [firebaseData, customer, isEditing, editForm]);
 
-    if (!customer) return null;
+    if (!customer || !c) return null;
 
     if (loading) return (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/80 backdrop-blur-sm">
             <div className="flex flex-col items-center gap-4">
                 <div className="w-12 h-12 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin"></div>
-                <p className="text-indigo-400 font-mono text-xs uppercase tracking-[0.3em]">Querying Firebase Vault...</p>
+                <p className="text-indigo-400 font-mono text-xs uppercase tracking-[0.3em]">Syncing Parameters...</p>
             </div>
         </div>
     );
@@ -211,77 +200,42 @@ export default function CustomerModal({ customer, onAction, onClose }) {
 
                 {/* BODY */}
                 <div className="flex-grow overflow-y-auto p-8 custom-scrollbar">
-                    {/* KEY KPIS */}
+                    {/* UPDATED KPI SECTION: Total Products replaced with Credit Limit */}
                     <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-10">
                         <StatBox label="Ledger Balance" value={`₹${c.balance.toLocaleString()}`} color="text-emerald-400" icon={<Wallet2/>}/>
                         <StatBox label="Neural Risk" value={riskLevel} color={riskLevel === 'High' ? 'text-rose-500' : 'text-indigo-400'} icon={<ShieldExclamation/>}/>
                         <StatBox label="CIBIL Score" value={Math.round(c.cibil)} color="text-amber-400" icon={<Activity/>}/>
-                        <StatBox label="Total Products" value={c.activeProducts} color="text-purple-400" icon={<ShieldCheck/>}/>
+                        <StatBox label="Credit Limit" value={`₹${c.cardLimit.toLocaleString()}`} color="text-purple-400" icon={<CreditCard/>}/>
                     </div>
 
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
                         {/* IDENTITY */}
                         <div className="space-y-8">
-                            <Section title="Identity parameters" icon={<PersonBadge/>}>
+                            <Section title="Identity Parameters" icon={<PersonBadge/>}>
                                 <InfoRow label="Email Access" value={c.email} isEditing={isEditing} onChange={(v) => handleFormChange("Email", "email", v)} />
                                 <InfoRow label="Secure Line" value={c.phone} isEditing={isEditing} onChange={(v) => handleFormChange("Contact Number", "mobile", v)} />
                                 <InfoRow label="Gender / Age" value={`${c.gender} / ${c.age} Yrs`} /> 
                                 <InfoRow label="PAN Ref" value={c.pan} isEditing={isEditing} onChange={(v) => handleFormChange("PAN_Card", "pan", v)} />
-                                <InfoRow label="Home Ownership" value={c.house} isEditing={isEditing} onChange={(v) => handleFormChange("HouseOwnership", "house", v)} />
-                                
-                                {/* NEW FIELDS APPLIED */}
                                 <InfoRow label="Res. Status" value={c.residentialStatus} isEditing={isEditing} onChange={(v) => handleFormChange("Residential Status", "residentialStatus", v)} />
                                 <InfoRow label="Nominee Name" value={c.nomineeName} isEditing={isEditing} onChange={(v) => handleFormChange("nomineeName", "nomineeName", v)} />
                                 <InfoRow label="Nominee Rel." value={c.nomineeRelation} isEditing={isEditing} onChange={(v) => handleFormChange("nomineeRelation", "nomineeRelation", v)} />
                             </Section>
-                            
-                            <Section title="Residential Hub" icon={<GeoAlt/>}>
-                                {isEditing ? (
-                                    <textarea 
-                                        value={editForm.Address || editForm.address || ""}
-                                        onChange={(e) => handleFormChange("Address", "address", e.target.value)}
-                                        className="w-full p-3 bg-slate-900 border border-indigo-500/50 rounded-xl text-xs text-slate-200 mb-2 focus:outline-none focus:ring-1 focus:ring-indigo-500"
-                                        rows="2"
-                                    />
-                                ) : (
-                                    <div className="p-3 bg-white/[0.02] rounded-xl border border-white/5 italic text-xs text-slate-400 leading-relaxed mb-2">
-                                        {c.address}
-                                    </div>
-                                )}
-                                <InfoRow label="Tenure" value={`${c.tenure} Years`} rawValue={c.tenure} isEditing={isEditing} onChange={(v) => handleFormChange("Relationship_Tenure_Years", "Relationship_Tenure_Years", Number(v))} />
-                                <InfoRow label="Years in City" value={`${c.yearsInCity} Yrs`} rawValue={c.yearsInCity} isEditing={isEditing} onChange={(v) => handleFormChange("Years_in_Current_City", "Years_in_Current_City", Number(v))} />
-                                <InfoRow label="Years in Job" value={`${c.yearsInJob} Yrs`} rawValue={c.yearsInJob} isEditing={isEditing} onChange={(v) => handleFormChange("Years_in_Current_Job", "Years_in_Current_Job", Number(v))} />
-                            </Section>
                         </div>
 
-                        {/* FINANCIALS & LOANS */}
+                        {/* FINANCIALS */}
                         <div className="space-y-8">
                             <Section title="Financial Ledger" icon={<CashStack/>}>
                                 <InfoRow label="Status" value={c.status.toUpperCase()} isEditing={isEditing} onChange={(v) => handleFormChange("status", "ActiveStatus", v)} />
-                                <InfoRow label="Acct Opened" value={c.acctOpenDate} />
-                                <InfoRow label="Branch ID" value={c.branchId} />
                                 <InfoRow label="Annual Income" value={`₹${c.income.toLocaleString()}`} rawValue={c.income} isEditing={isEditing} onChange={(v) => handleFormChange("AnnualIncome", "AnnualIncome", Number(v))} />
                                 <InfoRow label="Account Type" value={c.accType} isEditing={isEditing} onChange={(v) => handleFormChange("Account Type", "accType", v)} />
-                                <InfoRow label="Interest Rate" value={`${c.interest}%`} rawValue={c.interest} isEditing={isEditing} onChange={(v) => handleFormChange("Interest Rate", "interest", Number(v))} />
-                                <InfoRow label="Latest Txn" value={`${c.txnType} | ₹${c.txnAmount.toLocaleString()}`} />
-                                <InfoRow label="Last Activity" value={c.lastTxnDate} />
-                            </Section>
-                            <Section title="Credit & Loan Desk" icon={<Bank/>}>
-                                <InfoRow label="Loan Requested" value={`₹${c.loanRequested.toLocaleString()}`} />
-                                <InfoRow label="Active Loans" value={c.activeLoans} />
-                                <InfoRow label="Existing Loans" value={c.existingLoans} />
-                                <InfoRow label="Total Outstanding" value={`₹${c.loanOutstanding.toLocaleString()}`} isDanger={c.loanOutstanding > 0} />
-                                <InfoRow label="Late Payments" value={c.latePayments} isDanger={c.latePayments > 0} />
                             </Section>
                         </div>
 
-                        {/* CARDS & ACTIONS */}
+                        {/* CARD / DOCS */}
                         <div className="space-y-6">
-                            <Section title="Card intelligence" icon={<CreditCard/>}>
+                            <Section title="Card Intelligence" icon={<CreditCard/>}>
                                 <InfoRow label="Network" value={c.cardType} isEditing={isEditing} onChange={(v) => handleFormChange("Card Type", "cardType", v)} />
-                                <InfoRow label="Credit Limit" value={`₹${c.cardLimit.toLocaleString()}`} rawValue={c.cardLimit} isEditing={isEditing} onChange={(v) => handleFormChange("Credit Limit", "cardLimit", Number(v))} />
-                                <InfoRow label="Balance/Limit Ratio" value={`${(Number(c.cardRatio) * 100).toFixed(2)}%`} />
-                                <InfoRow label="Next Payment Due" value={c.paymentDue} />
+                                <InfoRow label="Spending Power" value={`₹${c.cardLimit.toLocaleString()}`} />
                             </Section>
                             
                             <div>
@@ -293,10 +247,6 @@ export default function CustomerModal({ customer, onAction, onClose }) {
                                         <span className="text-slate-700 font-bold uppercase tracking-widest text-xs">Imaging Offline</span>
                                     )}
                                 </div>
-                                <button onClick={() => onAction.toggleFreeze(c.id, c.isFrozen)} 
-                                        className={`w-full mt-6 py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all shadow-lg ${c.isFrozen ? 'bg-emerald-600 hover:bg-emerald-500' : 'bg-blue-600 hover:bg-blue-500'} text-white`}>
-                                    {c.isFrozen ? 'Authorize Access Release' : 'Initiate Asset Freeze'}
-                                </button>
                             </div>
                         </div>
                     </div>

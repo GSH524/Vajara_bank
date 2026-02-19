@@ -5,25 +5,26 @@ import DashboardCore from '../../components/admin/DashboardCore';
 import { 
   ShieldCheck, 
   ArrowClockwise, 
-  FileEarmarkText, 
   Activity,
   DatabaseFillCheck,
-  CloudCheckFill
+  CloudCheckFill,
+  Search
 } from 'react-bootstrap-icons';
 import { collection, query, where, onSnapshot, doc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { userDB } from '../../firebaseUser';
 import toast, { Toaster } from 'react-hot-toast';
 
 export default function AdminDashboard() {
-  // 1. Fetch Aggregated Data (users1 + users)
+  // 1. Fetch Aggregated Data (Linked via Customer ID)
   const { data, loading, error } = useBankData();
   const { overrides, auditLogs } = useAdminActions();
   
-  // 2. Local State for Registration Queue
+  // 2. Local State
   const [pendingUsers, setPendingUsers] = useState([]);
   const [loadingUsers, setLoadingUsers] = useState(true);
+  const [searchTerm, setSearchTerm] = useState(""); // For Customer ID search
 
-  // 3. Listen for Pending Signups in real-time
+  // 3. Real-time Listener for New Registrations
   useEffect(() => {
     const q = query(collection(userDB, 'users'), where('status', '==', 'pending'));
     
@@ -51,7 +52,7 @@ export default function AdminDashboard() {
         status: 'approved',
         approvalDate: serverTimestamp() 
       });
-      toast.success("User approved and credentials active.", { id: tid });
+      toast.success("User approved. Credentials active.", { id: tid });
     } catch (err) {
       toast.error("Approval sequence failed.", { id: tid });
     }
@@ -71,20 +72,31 @@ export default function AdminDashboard() {
     }
   };
 
-  // 6. Process Final Data (Merge Main Data with UI Overrides)
+  // 6. Data Processor: Filter by Search + Merge Admin Overrides
   const processedData = useMemo(() => {
     if (!data) return [];
-    return data.map(item => {
+    
+    // First, filter by Customer ID if user is typing
+    let filtered = data;
+    if (searchTerm.trim() !== "") {
+      filtered = data.filter(item => 
+        item.customerId?.toString().toLowerCase().includes(searchTerm.toLowerCase()) ||
+        item.fullName?.toLowerCase().includes(searchTerm.toLowerCase())
+      );
+    }
+
+    // Second, apply admin overrides (Freeze/Flag)
+    return filtered.map(item => {
       const override = overrides[item.customerId];
       return override ? {
         ...item,
         isFrozen: override.isFrozen ?? item.isFrozen,
-        isHighRisk: override.flagged ? true : item.isHighRisk
+        isHighRisk: override.flagged === true ? true : item.isHighRisk
       } : item;
     });
-  }, [data, overrides]);
+  }, [data, overrides, searchTerm]);
 
-  /* -------------------- LOADING & ERROR STATES -------------------- */
+  /* -------------------- RENDER HELPERS -------------------- */
 
   if (loading) return (
     <div className="min-h-screen bg-[#020617] flex flex-col items-center justify-center">
@@ -114,32 +126,40 @@ export default function AdminDashboard() {
           </div>
         </div>
 
-        {/* HEADER */}
+        {/* HEADER & SEARCH */}
         <header className="mb-10 flex flex-col lg:flex-row lg:items-end justify-between gap-6">
           <div>
             <h1 className="text-4xl font-black text-white tracking-tighter">
               VAJRA <span className="text-blue-500">Command Center</span>
             </h1>
             <p className="text-slate-400 mt-2 text-sm font-medium italic">
-              Aggregated view of {processedData.length} active accounts and {pendingUsers.length} pending applications.
+              Monitoring {processedData.length} records across disparate nodes.
             </p>
           </div>
           
-          <div className="flex items-center gap-3">
-            <button className="px-5 py-2.5 bg-slate-900 hover:bg-slate-800 border border-white/5 rounded-lg text-[10px] font-black uppercase tracking-widest text-slate-300 transition-all">
-              Audit Logs
-            </button>
+          <div className="flex flex-col sm:flex-row items-center gap-3">
+            {/* Search Input for Customer ID */}
+            <div className="relative group">
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-blue-400 transition-colors" size={14} />
+              <input 
+                type="text"
+                placeholder="Search Customer ID..."
+                className="bg-slate-900 border border-white/10 rounded-xl py-2.5 pl-11 pr-4 text-xs font-bold focus:outline-none focus:border-blue-500/50 focus:ring-1 focus:ring-blue-500/20 transition-all w-64"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
+            </div>
+
             <button 
               onClick={() => window.location.reload()}
               className="group flex items-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-[10px] font-black uppercase tracking-widest transition-all shadow-lg shadow-blue-900/20"
             >
-              <ArrowClockwise className="group-hover:rotate-180 transition-transform duration-500" /> Refresh Nexus
+              <ArrowClockwise className="group-hover:rotate-180 transition-transform duration-500" /> Refresh
             </button>
           </div>
         </header>
 
-        {/* MAIN DATA ARCHITECTURE */}
-        
+        {/* MAIN DASHBOARD UI */}
         <main className="relative">
           <div className="relative bg-[#0b1120]/80 border border-white/10 rounded-[1.5rem] shadow-2xl backdrop-blur-xl">
              <DashboardCore
@@ -157,7 +177,9 @@ export default function AdminDashboard() {
         {/* FOOTER */}
         <footer className="mt-10 flex justify-between items-center text-[9px] font-bold text-slate-600 uppercase tracking-[0.3em]">
           <div>&copy; 2026 Vajra Banking Nexus v4.0</div>
-          <div>Security Clearance: Level 5 (Root)</div>
+          <div className="flex items-center gap-2">
+            <ShieldCheck size={12} className="text-blue-500" /> Security Level: Root
+          </div>
         </footer>
       </div>
     </div>

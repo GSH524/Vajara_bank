@@ -115,36 +115,43 @@ export default function DashboardCore({
                             </div>
                         ) : (
                             <div className="space-y-3">
-                                {pendingUsers.map((user) => (
-                                    <div key={user.id} className="bg-[#111827] p-5 rounded-2xl border border-white/5 flex flex-col md:flex-row justify-between items-center gap-4 hover:border-blue-500/40 transition-all shadow-lg group">
-                                        <div className="flex items-center gap-5">
-                                            {/* SAFE ACCESS: Fixes "Cannot read properties of undefined (reading '0')" */}
-                                            <div className="w-12 h-12 bg-slate-900 rounded-xl flex items-center justify-center font-black text-blue-400 border border-white/5 group-hover:border-blue-500/50 transition-colors">
-                                                {user?.firstName?.[0] || '?'}{user?.lastName?.[0] || ''}
+                                {pendingUsers.map((user) => {
+                                    // IMPROVED DATA MAPPING: Handles both Space-keys (Firebase) and CamelCase
+                                    const fName = user?.firstName || user?.['First Name'] || 'Unknown';
+                                    const lName = user?.lastName || user?.['Last Name'] || 'User';
+                                    const email = user?.email || user?.['Email'] || 'No Email';
+                                    const acctType = user?.accountType || user?.['Account Type'] || 'Savings';
+
+                                    return (
+                                        <div key={user.id} className="bg-[#111827] p-5 rounded-2xl border border-white/5 flex flex-col md:flex-row justify-between items-center gap-4 hover:border-blue-500/40 transition-all shadow-lg group">
+                                            <div className="flex items-center gap-5">
+                                                <div className="w-12 h-12 bg-slate-900 rounded-xl flex items-center justify-center font-black text-blue-400 border border-white/5 group-hover:border-blue-500/50 transition-colors uppercase">
+                                                    {fName[0]}{lName[0]}
+                                                </div>
+                                                <div>
+                                                    <h4 className="font-bold text-white text-lg tracking-tight">{fName} {lName}</h4>
+                                                    <p className="text-xs font-medium text-slate-400">
+                                                        {email} <span className="mx-2 text-slate-700">|</span> <span className="text-blue-400 font-bold uppercase tracking-tighter">{acctType}</span>
+                                                    </p>
+                                                </div>
                                             </div>
-                                            <div>
-                                                <h4 className="font-bold text-white text-lg tracking-tight">{user?.firstName || 'Unknown'} {user?.lastName || ''}</h4>
-                                                <p className="text-xs font-medium text-slate-400">
-                                                    {user?.email || 'No Email'} <span className="mx-2 text-slate-700">|</span> <span className="text-blue-400 font-bold uppercase tracking-tighter">{user?.accountType || 'Standard'}</span>
-                                                </p>
+                                            <div className="flex gap-3">
+                                                <button 
+                                                    onClick={() => approveUser(user.id)} 
+                                                    className="px-6 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-black uppercase tracking-widest transition-all shadow-lg shadow-emerald-900/20"
+                                                >
+                                                    Approve
+                                                </button>
+                                                <button 
+                                                    onClick={() => rejectUser(user.id)} 
+                                                    className="px-6 py-2.5 bg-slate-800 hover:bg-red-900/40 text-slate-300 hover:text-red-400 rounded-xl text-xs font-black uppercase tracking-widest transition-all border border-white/5"
+                                                >
+                                                    Decline
+                                                </button>
                                             </div>
                                         </div>
-                                        <div className="flex gap-3">
-                                            <button 
-                                                onClick={() => approveUser(user.id)} 
-                                                className="px-6 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-black uppercase tracking-widest transition-all shadow-lg shadow-emerald-900/20"
-                                            >
-                                                Approve
-                                            </button>
-                                            <button 
-                                                onClick={() => rejectUser(user.id)} 
-                                                className="px-6 py-2.5 bg-slate-800 hover:bg-red-900/40 text-slate-300 hover:text-red-400 rounded-xl text-xs font-black uppercase tracking-widest transition-all border border-white/5"
-                                            >
-                                                Decline
-                                            </button>
-                                        </div>
-                                    </div>
-                                ))}
+                                    );
+                                })}
                             </div>
                         )}
                     </section>
@@ -185,6 +192,7 @@ export default function DashboardCore({
     );
 }
 
+// Sub-components stay the same...
 function RiskCard({ icon, color, label, count, subtext, link }) {
     const colors = {
         red: { text: "text-red-400", border: "border-red-500/20 hover:border-red-500/50", bg: "hover:bg-red-500/5" },

@@ -204,7 +204,6 @@ export default function SignUp() {
 
             // 4. Save to BOTH 'users' and 'users1' (for dashboard compatibility)
             await setDoc(doc(userDB, 'users', user.uid), userProfile);
-            await addDoc(collection(userDB, 'users1'), userProfile);
 
             // 5. Create Notification
             await addDoc(collection(userDB, 'notifications'), {

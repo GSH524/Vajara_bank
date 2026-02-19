@@ -85,21 +85,21 @@ export default function AdminAds() {
   };
 
   return (
-    <div className="min-h-screen p-6 md:p-10 bg-transparent font-['Outfit'] text-white">
+    <div className="min-h-screen p-4 sm:p-6 md:p-10 bg-transparent font-['Outfit'] text-white">
       {/* HEADER */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-10 gap-6">
-        <div>
-          <h1 className="text-4xl md:text-5xl font-black text-white tracking-tight">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 md:mb-10 gap-6">
+        <div className="w-full md:w-auto">
+          <h1 className="text-3xl sm:text-4xl md:text-5xl font-black text-white tracking-tight leading-tight">
             Ad <span className="text-blue-500 underline decoration-blue-500/20">Command</span> Center
           </h1>
-          <p className="text-slate-400 mt-2 text-lg">Review, approve, or reject partner campaigns</p>
+          <p className="text-slate-400 mt-2 text-base md:text-lg">Review and manage partner campaigns</p>
         </div>
 
-        <div className="flex items-center gap-4 bg-amber-500/10 border border-amber-500/20 px-6 py-3 rounded-2xl backdrop-blur-md">
-          <ClockHistory size={24} className="text-amber-500 animate-pulse" />
+        <div className="flex items-center gap-4 bg-amber-500/10 border border-amber-500/20 px-5 md:px-6 py-3 rounded-2xl backdrop-blur-md w-full sm:w-auto">
+          <ClockHistory size={24} className="text-amber-500 animate-pulse shrink-0" />
           <div>
             <div className="text-[10px] uppercase tracking-widest font-black text-amber-500/60">Pending Review</div>
-            <div className="text-2xl font-bold text-amber-500 leading-none">{stats.pending}</div>
+            <div className="text-xl md:text-2xl font-bold text-amber-500 leading-none">{stats.pending}</div>
           </div>
         </div>
       </div>
@@ -107,8 +107,8 @@ export default function AdminAds() {
       {/* LOADING */}
       {loading && (
         <div className="flex flex-col items-center justify-center py-20">
-          <div className="w-12 h-12 border-4 border-blue-500/20 border-t-blue-500 rounded-full animate-spin mb-4" />
-          <p className="text-slate-500 animate-pulse uppercase tracking-widest text-xs font-bold">Synchronizing Ads...</p>
+          <div className="w-10 h-10 border-4 border-blue-500/20 border-t-blue-500 rounded-full animate-spin mb-4" />
+          <p className="text-slate-500 animate-pulse uppercase tracking-widest text-[10px] font-bold">Synchronizing Ads...</p>
         </div>
       )}
 
@@ -116,18 +116,18 @@ export default function AdminAds() {
       {!loading && pendingAds.length === 0 && (
         <motion.div 
           initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
-          className="bg-slate-900/40 border border-white/5 rounded-[2.5rem] text-center py-20 backdrop-blur-sm"
+          className="bg-slate-900/40 border border-white/5 rounded-3xl md:rounded-[2.5rem] text-center py-16 md:py-20 backdrop-blur-sm mx-auto"
         >
-          <div className="inline-flex p-6 rounded-full bg-emerald-500/10 mb-6">
-            <CheckCircle size={48} className="text-emerald-500" />
+          <div className="inline-flex p-5 md:p-6 rounded-full bg-emerald-500/10 mb-6">
+            <CheckCircle className="text-emerald-500 w-10 h-10 md:w-12 md:h-12" />
           </div>
-          <h3 className="text-2xl font-bold text-white">No Pending Ads</h3>
-          <p className="text-slate-500 mt-2">You've cleared the queue! All partner campaigns are up to date.</p>
+          <h3 className="text-xl md:text-2xl font-bold text-white px-4">No Pending Ads</h3>
+          <p className="text-slate-500 mt-2 text-sm md:text-base px-6">You've cleared the queue! All partner campaigns are up to date.</p>
         </motion.div>
       )}
 
       {/* ADS GRID */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-8">
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 md:gap-8">
         <AnimatePresence>
           {pendingAds.map((ad) => {
             const adId = ad._id || ad.id;
@@ -135,52 +135,54 @@ export default function AdminAds() {
               <motion.div
                 key={adId} id={`ad-${adId}`}
                 layout
-                initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.9 }}
-                className="group relative bg-slate-900/60 border border-white/10 rounded-3xl overflow-hidden hover:border-blue-500/50 transition-all duration-300 shadow-2xl"
+                initial={{ opacity: 0, scale: 0.95 }} 
+                animate={{ opacity: 1, scale: 1 }} 
+                exit={{ opacity: 0, scale: 0.95 }}
+                className="group relative bg-slate-900/60 border border-white/10 rounded-2xl md:rounded-3xl overflow-hidden hover:border-blue-500/50 transition-all duration-300 shadow-2xl"
               >
                 {/* IMAGE SECTION */}
-                <div className="relative h-56 w-full bg-slate-950 overflow-hidden">
+                <div className="relative h-48 sm:h-56 w-full bg-slate-950 overflow-hidden">
                   <img
                     src={ad.imageUrl} alt={ad.title}
-                    className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110 opacity-80 group-hover:opacity-100"
+                    className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105 opacity-80 group-hover:opacity-100"
                     onError={(e) => { e.target.src = 'https://via.placeholder.com/800x400?text=Invalid+Image'; }}
                   />
-                  <div className="absolute top-4 right-4 bg-slate-900/90 backdrop-blur-md px-3 py-1 rounded-full border border-white/10 text-[10px] font-black uppercase text-blue-400 tracking-widest">
+                  <div className="absolute top-3 right-3 bg-slate-900/90 backdrop-blur-md px-3 py-1 rounded-full border border-white/10 text-[9px] font-black uppercase text-blue-400 tracking-widest">
                     {ad.durationDays} Days
                   </div>
                 </div>
 
                 {/* CONTENT SECTION */}
-                <div className="p-6">
-                  <h4 className="text-xl font-bold text-white mb-1 truncate">{ad.title}</h4>
-                  <p className="text-sm text-slate-500 mb-6 flex items-center gap-2">
-                    <Megaphone size={14} className="text-blue-500" />
-                    {ad.businessName}
+                <div className="p-5 md:p-6">
+                  <h4 className="text-lg md:text-xl font-bold text-white mb-1 truncate">{ad.title}</h4>
+                  <p className="text-xs md:text-sm text-slate-500 mb-6 flex items-center gap-2">
+                    <Megaphone size={14} className="text-blue-500 shrink-0" />
+                    <span className="truncate">{ad.businessName}</span>
                   </p>
 
-                  <div className="flex items-center justify-between p-4 bg-white/5 rounded-2xl mb-8 border border-white/5">
+                  <div className="flex items-center justify-between p-3 md:p-4 bg-white/5 rounded-xl md:rounded-2xl mb-6 md:mb-8 border border-white/5">
                     <div>
-                      <span className="text-[10px] block uppercase tracking-widest text-slate-500 font-bold mb-1">Status</span>
-                      <span className={ad.paymentStatus === 'PAID' ? 'text-emerald-400 font-bold text-sm' : 'text-rose-400 font-bold text-sm'}>
+                      <span className="text-[9px] block uppercase tracking-widest text-slate-500 font-bold mb-0.5 md:mb-1">Payment Status</span>
+                      <span className={ad.paymentStatus === 'PAID' ? 'text-emerald-400 font-bold text-xs md:text-sm' : 'text-rose-400 font-bold text-xs md:text-sm'}>
                         {ad.paymentStatus || 'UNPAID'}
                       </span>
                     </div>
-                    {ad.paymentStatus === 'PAID' && <ShieldCheck className="text-emerald-500 shadow-emerald-500/50" size={24} />}
+                    {ad.paymentStatus === 'PAID' && <ShieldCheck className="text-emerald-500 shrink-0" size={24} />}
                   </div>
 
                   {/* ACTIONS */}
-                  <div className="flex gap-3">
+                  <div className="flex flex-row gap-3">
                     <button
                       onClick={() => handleApprove(ad)}
-                      className="flex-1 flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white py-3 rounded-xl font-bold text-sm transition-all active:scale-95 shadow-lg shadow-emerald-900/20"
+                      className="flex-1 flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white py-2.5 md:py-3 rounded-lg md:rounded-xl font-bold text-xs md:text-sm transition-all active:scale-95 shadow-lg"
                     >
-                      <CheckCircle /> Approve
+                      <CheckCircle className="shrink-0" /> <span className="hidden xs:inline">Approve</span>
                     </button>
                     <button
                       onClick={() => handleReject(ad)}
-                      className="flex-1 flex items-center justify-center gap-2 bg-rose-600/10 hover:bg-rose-600 text-rose-500 hover:text-white border border-rose-500/20 py-3 rounded-xl font-bold text-sm transition-all active:scale-95"
+                      className="flex-1 flex items-center justify-center gap-2 bg-rose-600/10 hover:bg-rose-600 text-rose-500 hover:text-white border border-rose-500/20 py-2.5 md:py-3 rounded-lg md:rounded-xl font-bold text-xs md:text-sm transition-all active:scale-95"
                     >
-                      <XCircle /> Reject
+                      <XCircle className="shrink-0" /> <span className="hidden xs:inline">Reject</span>
                     </button>
                   </div>
                 </div>

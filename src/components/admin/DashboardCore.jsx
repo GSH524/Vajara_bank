@@ -28,7 +28,7 @@ export default function DashboardCore({
     const isAdmin = role === 'ADMIN';
 
     return (
-        <div className="bg-transparent space-y-8 text-slate-300 font-sans">
+        <div className="bg-transparent space-y-8 text-slate-300 font-sans p-6">
             
             {/* SUB-HEADER: Operational Status */}
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-[#111827] p-6 rounded-2xl border border-white/10 shadow-xl">
@@ -82,7 +82,7 @@ export default function DashboardCore({
                                 label="Pending KYC"
                                 count={pendingUsers.length} 
                                 subtext="Identity Verification"
-                                link="/admin/kyc"
+                                link="/admin/customers"
                             />
                             <RiskCard 
                                 icon={<CreditCard size={20} />}
@@ -118,13 +118,14 @@ export default function DashboardCore({
                                 {pendingUsers.map((user) => (
                                     <div key={user.id} className="bg-[#111827] p-5 rounded-2xl border border-white/5 flex flex-col md:flex-row justify-between items-center gap-4 hover:border-blue-500/40 transition-all shadow-lg group">
                                         <div className="flex items-center gap-5">
+                                            {/* SAFE ACCESS: Fixes "Cannot read properties of undefined (reading '0')" */}
                                             <div className="w-12 h-12 bg-slate-900 rounded-xl flex items-center justify-center font-black text-blue-400 border border-white/5 group-hover:border-blue-500/50 transition-colors">
-                                                {user.firstName[0]}{user.lastName[0]}
+                                                {user?.firstName?.[0] || '?'}{user?.lastName?.[0] || ''}
                                             </div>
                                             <div>
-                                                <h4 className="font-bold text-white text-lg tracking-tight">{user.firstName} {user.lastName}</h4>
+                                                <h4 className="font-bold text-white text-lg tracking-tight">{user?.firstName || 'Unknown'} {user?.lastName || ''}</h4>
                                                 <p className="text-xs font-medium text-slate-400">
-                                                    {user.email} <span className="mx-2 text-slate-700">|</span> <span className="text-blue-400 font-bold uppercase tracking-tighter">{user.accountType}</span>
+                                                    {user?.email || 'No Email'} <span className="mx-2 text-slate-700">|</span> <span className="text-blue-400 font-bold uppercase tracking-tighter">{user?.accountType || 'Standard'}</span>
                                                 </p>
                                             </div>
                                         </div>
@@ -184,35 +185,20 @@ export default function DashboardCore({
     );
 }
 
-// Helper Components
 function RiskCard({ icon, color, label, count, subtext, link }) {
     const colors = {
-        red: {
-            text: "text-red-400",
-            border: "border-red-500/20 hover:border-red-500/50",
-            bg: "hover:bg-red-500/5"
-        },
-        amber: {
-            text: "text-amber-400",
-            border: "border-amber-500/20 hover:border-amber-500/50",
-            bg: "hover:bg-amber-500/5"
-        },
-        blue: {
-            text: "text-blue-400",
-            border: "border-blue-500/20 hover:border-blue-500/50",
-            bg: "hover:bg-blue-500/5"
-        }
+        red: { text: "text-red-400", border: "border-red-500/20 hover:border-red-500/50", bg: "hover:bg-red-500/5" },
+        amber: { text: "text-amber-400", border: "border-amber-500/20 hover:border-amber-500/50", bg: "hover:bg-amber-500/5" },
+        blue: { text: "text-blue-400", border: "border-blue-500/20 hover:border-blue-500/50", bg: "hover:bg-blue-500/5" }
     };
-
     const c = colors[color];
-
     return (
         <div className={`p-6 rounded-2xl border bg-[#111827] transition-all duration-300 group shadow-lg ${c.border} ${c.bg}`}>
             <div className="flex justify-between items-start mb-5">
                 <div className={`p-3 rounded-xl bg-slate-900 border border-white/5 ${c.text} shadow-inner`}>
                     {icon}
                 </div>
-                <NavLink to={link} className="text-[9px] font-black text-white bg-blue-600 px-3 py-1.5 rounded-lg uppercase tracking-wider hover:bg-blue-500 flex items-center gap-2 transition-all shadow-lg shadow-blue-900/20">
+                <NavLink to={link} className="text-[9px] font-black text-white bg-blue-600 px-3 py-1.5 rounded-lg uppercase tracking-wider hover:bg-blue-500 flex items-center gap-2 transition-all shadow-lg">
                     Review <ArrowRight size={10} />
                 </NavLink>
             </div>

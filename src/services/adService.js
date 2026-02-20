@@ -234,9 +234,26 @@ export const adService = {
      * 8. TRACK CLICK
      */
     trackClick: async (adId) => {
-        console.log("Tracking click for", adId);
-        // Implement increment logic if needed
-        return { success: true };
+        try {
+            console.log("Tracking click for", adId);
+            const adRef = doc(userDB, "ads", adId);
+            const adSnap = await getDoc(adRef);
+
+            if (adSnap.exists()) {
+                const currentClicks = adSnap.data().clicks || 0;
+                await updateDoc(adRef, {
+                    clicks: currentClicks + 1,
+                    lastClickAt: serverTimestamp()
+                });
+                console.log("Click tracked successfully");
+            } else {
+                console.error("Ad not found for tracking click");
+            }
+            return { success: true };
+        } catch (error) {
+            console.error('Error tracking click:', error);
+            return { success: false, error };
+        }
     }
 };
 

@@ -5,7 +5,8 @@ import FeaturesShowcase from "../components/FeaturesShowcase";
 import features from "../data/featuresData";
 import AdBanner from "../components/AdBanner";
 // 1. Import your new BusinessAd component
-import BusinessAd from "./BusinessAd"; 
+import BusinessAd from "./BusinessAd";
+import AIBotWidget from "../components/AIBotWidget"; 
 
 const heroImages = [
   "https://cdn.prod.website-files.com/67b7abfbb037e687d0a415ec/67db95411df971225cd735e7_emerging_technologies_in_finance.webp",
@@ -41,6 +42,9 @@ export default function Home() {
       {/* 2. Place the BusinessAd here. 
           It is 'fixed' so it will float over everything regardless of where it is in the code. */}
       <BusinessAd />
+
+      {/* AI Bot Widget */}
+      <AIBotWidget />
 
       {/* ================= HERO SECTION ================= */}
       <AdBanner/>

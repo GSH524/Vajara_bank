@@ -258,7 +258,11 @@ export default function UserDashboard() {
                       </svg>
                       <span className="absolute text-xl font-black font-mono">{Math.floor(animatedScore)}</span>
                     </div>
+<<<<<<< HEAD
                     <span className="text-[9px] text-slate-500 mt-2 font-bold uppercase tracking-widest">Financial Health Score</span>
+=======
+                    <span className="text-[9px] text-slate-500 mt-2 font-bold uppercase tracking-widest">Financial CREDIT SCORE</span>
+>>>>>>> 36be0821ad5e01d73ce1787a4fa13993f38408d5
                   </div>
                 )}
               </div>

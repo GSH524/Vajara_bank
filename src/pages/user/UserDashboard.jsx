@@ -238,7 +238,7 @@ export default function UserDashboard() {
               <div className="py-4 min-h-[140px] flex flex-col items-center justify-center bg-slate-950/50 rounded-2xl border border-white/5 mt-4">
                 {!showCibil && !isCheckingCibil && (
                   <button onClick={handleCibilCheck} className="flex items-center gap-2 px-6 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-[10px] font-black uppercase rounded-full transition-all shadow-lg">
-                    Check Health Score
+                    Check Credit Score
                   </button>
                 )}
                 {isCheckingCibil && <div className="w-8 h-8 border-2 border-t-indigo-500 rounded-full animate-spin"></div>}
@@ -254,7 +254,7 @@ export default function UserDashboard() {
                       </svg>
                       <span className="absolute text-xl font-black font-mono">{Math.floor(animatedScore)}</span>
                     </div>
-                    <span className="text-[9px] text-slate-500 mt-2 font-bold uppercase tracking-widest">Financial Health</span>
+                    <span className="text-[9px] text-slate-500 mt-2 font-bold uppercase tracking-widest">Financial CREDIT SCORE</span>
                   </div>
                 )}
               </div>

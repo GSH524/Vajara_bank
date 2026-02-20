@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { useAuth } from "../../context/AuthContext";
-import { collection, query, where, getDocs } from "firebase/firestore";
+import { collection, query, where, getDocs, onSnapshot } from "firebase/firestore";
 import { userDB } from "../../firebaseUser";
 import { useNavigate } from "react-router-dom";
 import toast, { Toaster } from "react-hot-toast";
@@ -26,7 +26,14 @@ export default function PartnerDashboard() {
 
     useEffect(() => {
         loadBankData();
-        loadAds();
+        let unsubscribeAds;
+        loadAds().then(unsub => {
+            unsubscribeAds = unsub;
+        });
+
+        return () => {
+            if (unsubscribeAds) unsubscribeAds();
+        };
     }, [user]);
 
     const loadBankData = async () => {
@@ -52,8 +59,11 @@ export default function PartnerDashboard() {
         if (!user) return;
         try {
             const q = query(collection(userDB, "ads"), where("partnerId", "==", user.uid));
-            const snapshot = await getDocs(q);
-            setAds(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+            const unsubscribe = onSnapshot(q, (snapshot) => {
+                setAds(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+            });
+            // Store unsubscribe function if needed for cleanup
+            return unsubscribe;
         } catch (err) {
             console.error('Failed to load ads:', err);
         }

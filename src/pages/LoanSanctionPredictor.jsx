@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import Navbar from "../components/Navbar"
 
 const LoanSanctionPredictor = () => {
   const [formData, setFormData] = useState({
@@ -227,6 +228,7 @@ const LoanSanctionPredictor = () => {
 
   return (
     <>
+    <Navbar/>
       {showVideo ? (
         <div className="fixed inset-0 bg-black z-50 flex flex-col items-center justify-center">
           <h1 className="text-2xl sm:text-4xl font-black uppercase tracking-tight text-white mb-4">

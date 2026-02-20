@@ -19,7 +19,8 @@ export default function TransferMoney() {
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState(null);
-  const [liveBalance, setLiveBalance] = useState(0); // Live balance state
+  const [liveBalance, setLiveBalance] = useState(0);
+  const [senderColl, setSenderColl] = useState(null); // Tracks if sender is in 'users' or 'users1'
 
   const [formData, setFormData] = useState({
     transactionId: `TXN${Math.floor(10000000000 + Math.random() * 90000000000)}`,
@@ -27,61 +28,68 @@ export default function TransferMoney() {
     receiverName: '',
     receiverDocId: '',
     receiverEmail: '',
+    receiverColl: '', // Tracks if receiver is in 'users' or 'users1'
     ifsc: 'VAJR000524',
     amount: '',
     reason: ''
   });
 
-  // 1. FETCH LIVE SENDER BALANCE (Syncs immediately after transfer)
+  // 1. FETCH LIVE SENDER BALANCE (Checks both users and users1)
   useEffect(() => {
     if (!user?.email) return;
 
-    const q = query(collection(userDB, "users1"), where("Email", "==", user.email));
-    
-    // Using onSnapshot ensures the balance updates the moment the transaction completes
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      if (!snapshot.empty) {
-        const data = snapshot.docs[0].data();
-        setLiveBalance(data["Account Balance"] || 0);
-      }
+    const collections = ["users1", "users"];
+    const unsubscribes = collections.map((collName) => {
+      const q = query(collection(userDB, collName), where("Email", "==", user.email));
+      return onSnapshot(q, (snapshot) => {
+        if (!snapshot.empty) {
+          const data = snapshot.docs[0].data();
+          setLiveBalance(data["Account Balance"] || 0);
+          setSenderColl(collName); // Identify where the current user is stored
+        }
+      });
     });
 
-    return () => unsubscribe();
+    return () => unsubscribes.forEach(unsub => unsub());
   }, [user]);
 
-  // 2. ASYNC RECEIVER VERIFICATION
+  // 2. ASYNC RECEIVER VERIFICATION (Checks both collections)
   const handleAccountChange = async (e) => {
     const acc = e.target.value;
-    setFormData(prev => ({ ...prev, receiverAcc: acc, receiverName: '', receiverDocId: '', receiverEmail: '' }));
+    setFormData(prev => ({ ...prev, receiverAcc: acc, receiverName: '', receiverDocId: '', receiverEmail: '', receiverColl: '' }));
     setError(null);
 
     if (acc.length >= 8) {
       try {
-        const q = query(
-          collection(userDB, "users1"), 
-          where("Account_Number", "==", Number(acc))
-        );
-        const querySnapshot = await getDocs(q);
+        const collections = ["users1", "users"];
+        let found = false;
 
-        if (!querySnapshot.empty) {
-          const receiverDoc = querySnapshot.docs[0];
-          const data = receiverDoc.data();
-          setFormData(prev => ({ 
-            ...prev, 
-            receiverName: `${data["First Name"]} ${data["Last Name"]}`,
-            receiverDocId: receiverDoc.id,
-            receiverEmail: data["Email"]
-          }));
-        } else {
-          setError("Account number not recognized in network.");
+        for (const collName of collections) {
+          const q = query(collection(userDB, collName), where("Account_Number", "==", Number(acc)));
+          const querySnapshot = await getDocs(q);
+
+          if (!querySnapshot.empty) {
+            const receiverDoc = querySnapshot.docs[0];
+            const data = receiverDoc.data();
+            setFormData(prev => ({ 
+              ...prev, 
+              receiverName: `${data["First Name"]} ${data["Last Name"]}`,
+              receiverDocId: receiverDoc.id,
+              receiverEmail: data["Email"],
+              receiverColl: collName // Store the correct collection for the transaction
+            }));
+            found = true;
+            break;
+          }
         }
+        if (!found) setError("Account number not recognized in network.");
       } catch (err) {
         console.error("Verification Error:", err);
       }
     }
   };
 
-  // 3. TRANSACTION LOGIC
+  // 3. DYNAMIC TRANSACTION LOGIC
   const handleTransfer = async (e) => {
     e.preventDefault();
     setError(null);
@@ -99,8 +107,8 @@ export default function TransferMoney() {
       return;
     }
 
-    if (!formData.receiverDocId) {
-      setError("Please enter a valid receiver account.");
+    if (!formData.receiverDocId || !senderColl) {
+      setError("Synchronization error. Please wait for balance to load.");
       return;
     }
 
@@ -108,13 +116,9 @@ export default function TransferMoney() {
 
     try {
       await runTransaction(userDB, async (transaction) => {
-        const senderQuery = query(collection(userDB, "users1"), where("Email", "==", user.email));
-        const senderSnapshot = await getDocs(senderQuery);
-        
-        if (senderSnapshot.empty) throw new Error("Sender account record missing.");
-        
-        const senderDocRef = doc(userDB, "users1", senderSnapshot.docs[0].id);
-        const receiverDocRef = doc(userDB, "users1", formData.receiverDocId);
+        // Dynamically reference the correct docs based on detected collections
+        const senderDocRef = doc(userDB, senderColl, (await getDocs(query(collection(userDB, senderColl), where("Email", "==", user.email)))).docs[0].id);
+        const receiverDocRef = doc(userDB, formData.receiverColl, formData.receiverDocId);
 
         const sDoc = await transaction.get(senderDocRef);
         const rDoc = await transaction.get(receiverDocRef);
@@ -124,13 +128,9 @@ export default function TransferMoney() {
         const sData = sDoc.data();
         const rData = rDoc.data();
 
-        const currentSenderBal = sData["Account Balance"] || 0;
-        const currentReceiverBal = rData["Account Balance"] || 0;
-        const currentPoints = sData["Rewards Points"] || 0;
-
-        const newSenderBal = currentSenderBal - amount;
-        const newReceiverBal = currentReceiverBal + amount;
-        const newPoints = currentPoints + earnedPoints;
+        const newSenderBal = (sData["Account Balance"] || 0) - amount;
+        const newReceiverBal = (rData["Account Balance"] || 0) + amount;
+        const newPoints = (sData["Rewards Points"] || 0) + earnedPoints;
 
         transaction.update(senderDocRef, { 
             "Account Balance": newSenderBal,
@@ -142,7 +142,7 @@ export default function TransferMoney() {
         });
       });
 
-      // LOG ENTRIES
+      // LOG ENTRIES (Remaining logic same as before)
       await addDoc(collection(userDB, "transfer"), {
         transactionId: formData.transactionId,
         senderEmail: user.email.toLowerCase(),
@@ -151,17 +151,6 @@ export default function TransferMoney() {
         amount: amount,
         reason: formData.reason,
         type: "Withdrawal",
-        status: "Success",
-        timestamp: serverTimestamp()
-      });
-
-      await addDoc(collection(userDB, "transfer"), {
-        transactionId: formData.transactionId + "-REC",
-        senderEmail: formData.receiverEmail.toLowerCase(),
-        senderName: `${user.firstName} ${user.lastName}`,
-        amount: amount,
-        reason: `Received from ${user.firstName}`,
-        type: "Deposit", 
         status: "Success",
         timestamp: serverTimestamp()
       });
@@ -209,7 +198,6 @@ export default function TransferMoney() {
             <div className="mt-6 p-5 bg-gradient-to-br from-slate-800 to-slate-900 border border-white/5 rounded-3xl flex justify-between items-center">
               <div>
                 <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mb-1">Available Funds</p>
-                {/* DISPLAY LIVE BALANCE HERE */}
                 <p className="text-2xl font-black text-white">₹{liveBalance.toLocaleString()}</p>
               </div>
               <div className="p-3 bg-indigo-500/10 rounded-2xl text-indigo-400">

@@ -6,14 +6,15 @@ import { NavLink } from 'react-router-dom';
 import { 
     ArrowRight, 
     ExclamationTriangle, 
-    FileText, 
     CreditCard, 
-    CheckCircle, 
     Activity, 
     Cpu, 
     Database, 
     ShieldCheck,
-    ClockHistory
+    ClockHistory,
+    PersonBadge,
+    CardList,
+    EnvelopeAt
 } from 'react-bootstrap-icons';
 
 export default function DashboardCore({
@@ -23,6 +24,10 @@ export default function DashboardCore({
     loadingUsers = false,
     approveUser,
     rejectUser,
+    cardApps = [],
+    loadingCards = false,
+    approveCard,
+    rejectCard,
     auditLogs = []
 }) {
     const isAdmin = role === 'ADMIN';
@@ -62,101 +67,120 @@ export default function DashboardCore({
             {isAdmin && (
                 <>
                     {/* RISK & ATTENTION SECTION */}
-                    <section className="space-y-4">
-                        <div className="flex items-center gap-3 px-2">
-                            <Activity size={18} className="text-blue-400" />
-                            <h3 className="text-xs font-black text-slate-400 uppercase tracking-[0.25em]">Critical Oversight</h3>
-                        </div>
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                            <RiskCard 
-                                icon={<ExclamationTriangle size={20} />}
-                                color="red"
-                                label="High Risk Flags"
-                                count={data.filter(d => d.isHighRisk).length}
-                                subtext="Priority Review"
-                                link="/admin/customers"
-                            />
-                            <RiskCard 
-                                icon={<FileText size={20} />}
-                                color="amber"
-                                label="Pending KYC"
-                                count={pendingUsers.length} 
-                                subtext="Identity Verification"
-                                link="/admin/customers"
-                            />
-                            <RiskCard 
-                                icon={<CreditCard size={20} />}
-                                color="blue"
-                                label="Card Issuance"
-                                count={12}
-                                subtext="Active Requests"
-                                link="/admin/cards"
-                            />
-                        </div>
+                    <section className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        <RiskCard 
+                            icon={<ExclamationTriangle size={20} />}
+                            color="red"
+                            label="High Risk Flags"
+                            count={data.filter(d => d.isHighRisk).length}
+                            subtext="Priority Review"
+                            link="/admin/customers"
+                        />
+                        <RiskCard 
+                            icon={<PersonBadge size={20} />}
+                            color="amber"
+                            label="User Requests"
+                            count={pendingUsers.length} 
+                            subtext="New Registrations"
+                            link="/admin/customers"
+                        />
+                        <RiskCard 
+                            icon={<CreditCard size={20} />}
+                            color="blue"
+                            label="Card Issuance"
+                            count={cardApps.length}
+                            subtext="Card Applications"
+                            link="/admin/cards"
+                        />
                     </section>
 
-                    {/* REGISTRY QUEUE - User Approvals */}
-                    <section className="space-y-4">
-                        <div className="flex items-center justify-between px-2">
-                            <h3 className="text-xs font-black text-slate-400 uppercase tracking-[0.25em]">Verification Queue</h3>
-                            <span className="text-[10px] bg-blue-500/10 text-blue-400 px-3 py-1 rounded-full border border-blue-500/30 font-bold tracking-wider">
-                                {pendingUsers.length} APPLICATIONS PENDING
-                            </span>
-                        </div>
-
-                        {loadingUsers ? (
-                            <div className="bg-[#111827] p-12 rounded-2xl border border-white/5 text-center animate-pulse">
-                                <p className="text-slate-500 text-sm font-black uppercase tracking-widest">Synchronizing Queue...</p>
-                            </div>
-                        ) : pendingUsers.length === 0 ? (
-                            <div className="bg-[#111827] p-10 rounded-2xl border border-white/5 flex flex-col items-center justify-center text-center shadow-lg">
-                                <CheckCircle size={32} className="text-emerald-500/50 mb-3" />
-                                <p className="font-bold text-slate-400 text-sm uppercase tracking-widest">Queue Clear</p>
-                            </div>
-                        ) : (
-                            <div className="space-y-3">
-                                {pendingUsers.map((user) => {
-                                    // IMPROVED DATA MAPPING: Handles both Space-keys (Firebase) and CamelCase
-                                    const fName = user?.firstName || user?.['First Name'] || 'Unknown';
-                                    const lName = user?.lastName || user?.['Last Name'] || 'User';
-                                    const email = user?.email || user?.['Email'] || 'No Email';
-                                    const acctType = user?.accountType || user?.['Account Type'] || 'Savings';
-
-                                    return (
-                                        <div key={user.id} className="bg-[#111827] p-5 rounded-2xl border border-white/5 flex flex-col md:flex-row justify-between items-center gap-4 hover:border-blue-500/40 transition-all shadow-lg group">
-                                            <div className="flex items-center gap-5">
-                                                <div className="w-12 h-12 bg-slate-900 rounded-xl flex items-center justify-center font-black text-blue-400 border border-white/5 group-hover:border-blue-500/50 transition-colors uppercase">
-                                                    {fName[0]}{lName[0]}
-                                                </div>
-                                                <div>
-                                                    <h4 className="font-bold text-white text-lg tracking-tight">{fName} {lName}</h4>
-                                                    <p className="text-xs font-medium text-slate-400">
-                                                        {email} <span className="mx-2 text-slate-700">|</span> <span className="text-blue-400 font-bold uppercase tracking-tighter">{acctType}</span>
-                                                    </p>
-                                                </div>
+                    {/* COMBINED VERIFICATION QUEUE */}
+                    <section className="grid grid-cols-1 xl:grid-cols-2 gap-8">
+                        
+                        {/* 1. USER REGISTRATIONS */}
+                        <div className="space-y-4">
+                            <h3 className="text-xs font-black text-slate-400 uppercase tracking-[0.25em] flex items-center gap-2 px-2">
+                                <PersonBadge className="text-emerald-500" /> Registration Queue
+                            </h3>
+                            {loadingUsers ? (
+                                <div className="h-32 flex items-center justify-center bg-[#111827] rounded-2xl border border-white/5 animate-pulse">Syncing...</div>
+                            ) : pendingUsers.length === 0 ? (
+                                <div className="bg-[#111827]/50 border border-dashed border-white/10 p-10 rounded-2xl text-center text-slate-600 font-bold uppercase text-xs">No pending registrations</div>
+                            ) : (
+                                <div className="space-y-3">
+                                    {pendingUsers.map((user) => (
+                                        <div key={user.id} className="bg-[#111827] p-5 rounded-2xl border border-white/5 flex justify-between items-center group">
+                                            <div>
+                                                <h4 className="font-bold text-white text-sm">{user?.fullName || "New Member"}</h4>
+                                                <p className="text-[10px] text-slate-500 uppercase tracking-tighter">{user?.email}</p>
                                             </div>
-                                            <div className="flex gap-3">
-                                                <button 
-                                                    onClick={() => approveUser(user.id)} 
-                                                    className="px-6 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-black uppercase tracking-widest transition-all shadow-lg shadow-emerald-900/20"
-                                                >
-                                                    Approve
-                                                </button>
-                                                <button 
-                                                    onClick={() => rejectUser(user.id)} 
-                                                    className="px-6 py-2.5 bg-slate-800 hover:bg-red-900/40 text-slate-300 hover:text-red-400 rounded-xl text-xs font-black uppercase tracking-widest transition-all border border-white/5"
-                                                >
-                                                    Decline
-                                                </button>
+                                            <div className="flex gap-2">
+                                                <button onClick={() => approveUser(user.id)} className="px-4 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-[10px] font-black uppercase tracking-widest transition-all">Approve</button>
+                                                <button onClick={() => rejectUser(user.id)} className="px-4 py-1.5 bg-slate-800 hover:bg-red-600 text-white rounded-lg text-[10px] font-black uppercase tracking-widest transition-all">Reject</button>
                                             </div>
                                         </div>
-                                    );
-                                })}
-                            </div>
-                        )}
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+
+                        {/* 2. CREDIT CARD APPLICATIONS (UPDATED WITH USER DETAILS) */}
+                        <div className="space-y-4">
+                            <h3 className="text-xs font-black text-slate-400 uppercase tracking-[0.25em] flex items-center gap-2 px-2">
+                                <CreditCard className="text-blue-500" /> Card Issuance Queue
+                            </h3>
+                            {loadingCards ? (
+                                <div className="h-32 flex items-center justify-center bg-[#111827] rounded-2xl border border-white/5 animate-pulse">Scanning Nexus...</div>
+                            ) : cardApps.length === 0 ? (
+                                <div className="bg-[#111827]/50 border border-dashed border-white/10 p-10 rounded-2xl text-center text-slate-600 font-bold uppercase text-xs">Queue Clear</div>
+                            ) : (
+                                <div className="space-y-3">
+                                    {cardApps.map((app) => (
+                                        <div key={app.id} className="bg-[#111827] p-5 rounded-2xl border border-blue-500/20 flex flex-col justify-between group shadow-lg shadow-blue-900/5">
+                                            <div className="flex items-center justify-between mb-4 border-b border-white/5 pb-3">
+                                                <div className="flex items-center gap-4">
+                                                    <div className="w-12 h-12 bg-blue-600/10 rounded-xl flex items-center justify-center text-blue-400 border border-blue-500/20 uppercase font-black text-lg">
+                                                        {app.userName?.[0] || 'V'}
+                                                    </div>
+                                                    <div>
+                                                        <h4 className="font-bold text-white text-base tracking-tight">{app.userName || "Applicant"}</h4>
+                                                        <p className="text-[10px] text-slate-500 font-mono flex items-center gap-1">
+                                                            <EnvelopeAt size={10} className="text-blue-500"/> {app.userEmail}
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                                <div className="text-right">
+                                                    <span className="text-[9px] font-black bg-blue-500/10 text-blue-400 px-2 py-1 rounded border border-blue-500/20 uppercase tracking-widest">
+                                                        {app.cardType}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                            
+                                            <div className="flex items-center justify-between">
+                                                <div className="flex gap-4">
+                                                    <div className="flex flex-col">
+                                                        <span className="text-[8px] font-black text-slate-500 uppercase">Annual Income</span>
+                                                        <span className="text-xs font-bold text-slate-200">₹{Number(app.income).toLocaleString()}</span>
+                                                    </div>
+                                                    <div className="flex flex-col border-l border-white/10 pl-4">
+                                                        <span className="text-[8px] font-black text-slate-500 uppercase">Employment</span>
+                                                        <span className="text-xs font-bold text-slate-200">{app.employment}</span>
+                                                    </div>
+                                                </div>
+                                                <div className="flex gap-2">
+                                                    <button onClick={() => approveCard(app.id)} className="px-5 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-[10px] font-black uppercase tracking-widest transition-all shadow-lg">Issue Card</button>
+                                                    <button onClick={() => rejectCard(app.id)} className="px-5 py-2 bg-slate-800 hover:bg-red-900 text-white rounded-lg text-[10px] font-black uppercase tracking-widest transition-all border border-white/5">Deny</button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+
                     </section>
 
-                    {/* LOGS & HARDWARE STATUS */}
+                    {/* LOGS SECTION */}
                     <section className="grid grid-cols-1 lg:grid-cols-3 gap-6 pb-8">
                         <div className="lg:col-span-2 bg-[#111827] rounded-2xl border border-white/5 overflow-hidden shadow-2xl">
                             <div className="p-4 border-b border-white/5 bg-white/5 flex items-center gap-3">
@@ -170,19 +194,11 @@ export default function DashboardCore({
                             <h3 className="text-xs font-black text-slate-400 uppercase tracking-[0.2em] mb-8 flex items-center gap-3">
                                 <Cpu size={18} className="text-blue-400 animate-pulse"/> Infrastructure
                             </h3>
-                            
                             <div className="space-y-6">
                                 <StatusRow label="Cloud Core" status="Online" icon={<Activity size={14}/>} />
                                 <StatusRow label="Vajra DB" status="Synced" icon={<Database size={14}/>} />
                                 <StatusRow label="API Latency" value="12ms" />
                                 <StatusRow label="Uptime" value="99.98%" />
-                            </div>
-
-                            <div className="mt-10 pt-6 border-t border-white/5">
-                                <div className="flex justify-between items-center text-[10px] font-black tracking-widest text-slate-600 uppercase">
-                                    <span>V-Stable 2.9</span>
-                                    <span className="text-blue-500/80">Premium Enterprise</span>
-                                </div>
                             </div>
                         </div>
                     </section>
@@ -192,7 +208,7 @@ export default function DashboardCore({
     );
 }
 
-// Sub-components stay the same...
+// Reusable Helper Components
 function RiskCard({ icon, color, label, count, subtext, link }) {
     const colors = {
         red: { text: "text-red-400", border: "border-red-500/20 hover:border-red-500/50", bg: "hover:bg-red-500/5" },

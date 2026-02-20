@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { NavLink, Link, useNavigate } from "react-router-dom";
+import { NavLink, Link } from "react-router-dom";
 import {
   List,
   X,
@@ -18,18 +18,15 @@ import {
   GraphUp,
   Megaphone,
   Cpu,
-  Bell // Added Bell for Notification
+  Bell
 } from "react-bootstrap-icons";
-import { useAuth } from "../context/AuthContext";
 
-export default function AdminNavbar() {
-  const { user, logoutUser } = useAuth();
+export default function AdminNavbar({ admin, onLogout }) {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [isConsoleOpen, setIsConsoleOpen] = useState(false);
   const profileRef = useRef(null);
   const consoleRef = useRef(null);
-  const navigate = useNavigate();
 
   useEffect(() => {
     function handleClickOutside(event) {
@@ -44,10 +41,10 @@ export default function AdminNavbar() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  const handleLogout = async () => {
+  const handleLocalLogout = async () => {
     setIsProfileOpen(false);
-    await logoutUser();
-    navigate("/");
+    setIsMobileMenuOpen(false);
+    if (onLogout) await onLogout();
   };
 
   const adminItems = [
@@ -74,7 +71,6 @@ export default function AdminNavbar() {
     <>
       <nav className="sticky top-0 z-[100] bg-[#020617]/90 backdrop-blur-xl border-b border-white/5 px-6 py-4">
         <div className="max-w-[1440px] mx-auto flex items-center justify-between">
-
           <div className="flex items-center gap-8">
             <Link to="/" className="flex items-center gap-2 group">
               <div className="p-2 bg-indigo-600 rounded-xl text-white shadow-lg shadow-indigo-600/20 group-hover:scale-110 transition-transform">
@@ -85,7 +81,6 @@ export default function AdminNavbar() {
               </span>
             </Link>
 
-            {/* LEFT LINKS: Home, About, Contact */}
             <div className="hidden lg:flex items-center gap-1">
               <NavLink to="/" className={navLinkClass}>Home</NavLink>
               <NavLink to="/about" className={navLinkClass}>About</NavLink>
@@ -139,9 +134,7 @@ export default function AdminNavbar() {
             </div>
           </div>
 
-          {/* RIGHT SIDE: Notifications + Profile */}
           <div className="flex items-center gap-4">
-            {/* NOTIFICATION ICON */}
             <button className="relative p-2 text-slate-400 hover:text-indigo-400 hover:bg-white/5 rounded-full transition-all group">
               <Bell size={20} />
               <span className="absolute top-2 right-2 w-2 h-2 bg-indigo-500 rounded-full border-2 border-[#020617] group-hover:animate-pulse"></span>
@@ -153,7 +146,7 @@ export default function AdminNavbar() {
                 className="flex items-center gap-3 p-1.5 bg-slate-900 border border-white/10 rounded-full hover:border-indigo-500/50 transition-all"
               >
                 <div className="w-8 h-8 flex items-center justify-center rounded-full bg-gradient-to-tr from-indigo-600 to-indigo-400 text-white font-black text-xs shadow-inner uppercase">
-                  {user?.name?.charAt(0) || "A"}
+                  {admin?.name?.charAt(0) || "A"}
                 </div>
                 <span className="hidden lg:block text-[10px] font-black text-slate-300 uppercase tracking-widest px-1">Admin</span>
               </button>
@@ -161,13 +154,13 @@ export default function AdminNavbar() {
               {isProfileOpen && (
                 <div className="absolute right-0 mt-3 w-64 bg-[#0f172a] border border-white/10 rounded-3xl shadow-2xl py-3 z-[110] animate-in fade-in zoom-in-95 origin-top-right">
                   <div className="px-6 py-4 border-b border-white/5 mb-2">
-                    <p className="text-sm font-black text-white truncate uppercase">{user?.name || "System Root"}</p>
+                    <p className="text-sm font-black text-white truncate uppercase">{admin?.name || "System Root"}</p>
                     <p className="text-[9px] text-indigo-400 font-black uppercase tracking-widest">Authorized Access</p>
                   </div>
                   <Link to="/admin/profile" onClick={() => setIsProfileOpen(false)} className="flex items-center gap-3 px-6 py-3 text-xs font-bold text-slate-400 hover:text-white hover:bg-white/5 transition-colors">
                     <PersonCircle size={16} /> Profile Settings
                   </Link>
-                  <button onClick={handleLogout} className="flex items-center gap-3 w-full px-6 py-4 text-xs text-rose-500 font-black uppercase tracking-widest hover:bg-rose-500/10 border-t border-white/5 mt-2 transition-all">
+                  <button onClick={handleLocalLogout} className="flex items-center gap-3 w-full px-6 py-4 text-xs text-rose-500 font-black uppercase tracking-widest hover:bg-rose-500/10 border-t border-white/5 mt-2 transition-all">
                     <BoxArrowRight size={18} /> Sign Out
                   </button>
                 </div>
@@ -181,7 +174,6 @@ export default function AdminNavbar() {
         </div>
       </nav>
 
-      {/* MOBILE SIDE DRAWER */}
       {isMobileMenuOpen && (
         <div className="fixed inset-0 z-[200] lg:hidden">
           <div className="absolute inset-0 bg-slate-950/90 backdrop-blur-md" onClick={() => setIsMobileMenuOpen(false)} />
@@ -192,7 +184,6 @@ export default function AdminNavbar() {
             </div>
             <div className="flex flex-col gap-3">
               <Link to="/" onClick={() => setIsMobileMenuOpen(false)} className="p-4 rounded-2xl bg-white/5 text-slate-400 font-black uppercase tracking-widest text-[10px]"><House size={18} className="inline mr-3"/> Home</Link>
-              {/* Added Mobile Links */}
               <Link to="/about" onClick={() => setIsMobileMenuOpen(false)} className="p-4 rounded-2xl bg-white/5 text-slate-400 font-black uppercase tracking-widest text-[10px]"><InfoCircle size={18} className="inline mr-3"/> About</Link>
               <Link to="/contact" onClick={() => setIsMobileMenuOpen(false)} className="p-4 rounded-2xl bg-white/5 text-slate-400 font-black uppercase tracking-widest text-[10px]"><Envelope size={18} className="inline mr-3"/> Contact</Link>
               
@@ -203,12 +194,14 @@ export default function AdminNavbar() {
                   <span className="text-indigo-500">{item.icon}</span> {item.name}
                 </NavLink>
               ))}
+              <button onClick={handleLocalLogout} className="flex items-center gap-4 p-4 mt-2 rounded-2xl bg-rose-500/10 text-rose-500 font-black uppercase tracking-widest text-[10px] border border-rose-500/20">
+                <BoxArrowRight size={18} /> Sign Out
+              </button>
             </div>
           </div>
         </div>
       )}
 
-      {/* MOBILE BOTTOM TAB BAR */}
       <div className="lg:hidden fixed bottom-0 left-0 right-0 z-[100] bg-[#020617]/90 backdrop-blur-2xl border-t border-white/5 px-2 py-3 pb-8 flex items-center justify-around">
         <NavLink to="/" className={mobileTabLink}>
           <House size={22} />

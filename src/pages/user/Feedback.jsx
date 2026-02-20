@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { useCurrentUser } from '../../hooks/useCurrentUser';
-import { feedbackService } from '../../services/feedbackService';
 import { ChatLeftQuote, Send, CheckCircle } from 'react-bootstrap-icons';
+import { collection, addDoc } from 'firebase/firestore';
+import { userDB } from '../../firebaseUser';
 
 export default function Feedback() {
   const { currentUser } = useCurrentUser();
@@ -11,31 +12,45 @@ export default function Feedback() {
   const [submitted, setSubmitted] = useState(false);
   const [loading, setLoading] = useState(false);
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (!subject || !message) return;
 
     setLoading(true);
 
-    const ticket = {
-      userId: currentUser?.uid || 'guest',
-      userName: currentUser?.displayName || currentUser?.firstName || 'Guest User',
-      userEmail: currentUser?.email || 'N/A',
-      subject,
-      message,
-      category
-    };
+    try {
+      // 1. Create the feedback ticket
+      await addDoc(collection(userDB, "feedbacks"), {
+        userId: currentUser?.uid || 'guest',
+        userName: currentUser?.displayName || currentUser?.firstName || 'Guest User',
+        userEmail: currentUser?.email || 'N/A',
+        subject,
+        message,
+        category,
+        status: 'Pending',
+        createdAt: new Date().toISOString()
+      });
 
-    // Simulate network delay for better UX
-    setTimeout(() => {
-      feedbackService.addTicket(ticket);
-      setLoading(false);
+      // 2. Notify the Admin
+      await addDoc(collection(userDB, "notifications"), {
+        role: "admin", // Target admin dashboard
+        type: "NEW_FEEDBACK",
+        title: "New Client Request",
+        message: `${currentUser?.displayName || 'A user'} submitted a ${category} request regarding: ${subject}`,
+        isRead: false,
+        createdAt: new Date().toISOString()
+      });
+
       setSubmitted(true);
-      // Reset form
       setSubject('');
       setMessage('');
       setCategory('General');
-    }, 800);
+    } catch (error) {
+      console.error("Feedback error: ", error);
+      alert("Something went wrong. Please try again.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   if (submitted) {
@@ -63,7 +78,6 @@ export default function Feedback() {
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-200 p-4 md:p-8">
-      {/* HEADER */}
       <div className="mb-10 max-w-2xl">
         <h1 className="text-3xl font-bold text-white flex items-center gap-3">
           <ChatLeftQuote className="text-blue-500" /> Help & Support
@@ -73,8 +87,6 @@ export default function Feedback() {
 
       <div className="max-w-3xl bg-slate-900 border border-slate-800 rounded-[2.5rem] p-8 md:p-12 shadow-2xl">
         <form onSubmit={handleSubmit} className="space-y-6">
-          
-          {/* CATEGORY */}
           <div className="space-y-2">
             <label className="text-sm font-bold text-slate-500 uppercase tracking-widest ml-1">Issue Category</label>
             <select
@@ -89,7 +101,6 @@ export default function Feedback() {
             </select>
           </div>
 
-          {/* SUBJECT */}
           <div className="space-y-2">
             <label className="text-sm font-bold text-slate-500 uppercase tracking-widest ml-1">Subject</label>
             <input
@@ -102,7 +113,6 @@ export default function Feedback() {
             />
           </div>
 
-          {/* MESSAGE */}
           <div className="space-y-2">
             <label className="text-sm font-bold text-slate-500 uppercase tracking-widest ml-1">Message</label>
             <textarea
@@ -115,32 +125,18 @@ export default function Feedback() {
             ></textarea>
           </div>
 
-          {/* USER INFO NOTE */}
           <div className="bg-blue-500/5 border border-blue-500/10 rounded-2xl p-4">
             <p className="text-sm text-slate-400">
               Submitting as: <span className="text-blue-400 font-bold">{currentUser?.displayName || currentUser?.email || 'Guest'}</span>
             </p>
           </div>
 
-          {/* SUBMIT BUTTON */}
           <button 
             type="submit" 
             className="w-full md:w-auto px-10 py-4 bg-blue-600 hover:bg-blue-500 disabled:bg-slate-700 disabled:text-slate-500 text-white font-black rounded-2xl transition-all shadow-lg shadow-blue-900/30 active:scale-[0.98] flex items-center justify-center gap-2"
             disabled={loading}
           >
-            {loading ? (
-              <span className="flex items-center gap-2">
-                <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                </svg>
-                Sending...
-              </span>
-            ) : (
-              <>
-                <Send size={18} /> Submit Request
-              </>
-            )}
+            {loading ? "Sending..." : <><Send size={18} /> Submit Request</>}
           </button>
         </form>
       </div>

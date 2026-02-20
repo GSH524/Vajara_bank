@@ -1,14 +1,11 @@
 import { useState } from "react";
 import emailjs from "@emailjs/browser";
 import { 
-  TelephoneFill, 
-  EnvelopeFill, 
-  GeoAltFill, 
-  ClockFill, 
-  ChatDotsFill, 
-  BuildingFill,
-  ArrowRight
+  TelephoneFill, EnvelopeFill, GeoAltFill, ClockFill, 
+  ChatDotsFill, BuildingFill, ArrowRight
 } from "react-bootstrap-icons";
+import { collection, addDoc } from "firebase/firestore";
+import { userDB } from "../firebaseUser";
 
 export default function Contact() {
   const [form, setForm] = useState({
@@ -25,45 +22,61 @@ export default function Contact() {
     setForm({ ...form, [e.target.name]: e.target.value });
   };
 
-  const sendMessage = (e) => {
+  const sendMessage = async (e) => {
     e.preventDefault();
     setLoading(true);
 
-    emailjs.send(
-      import.meta.env.VITE_EMAILJS_SERVICE_ID,
-      import.meta.env.VITE_EMAILJS_TEMPLATE_ID,
-      {
-        name: form.name,
-        email: form.email,
-        phone: form.phone,
-        subject: form.subject,
-        message: form.message,
-      },
-      import.meta.env.VITE_EMAILJS_PUBLIC_KEY
-    )
-      .then(
-        () => {
-          alert("Message sent successfully!");
-          setForm({
-            name: "",
-            email: "",
-            phone: "",
-            subject: "",
-            message: "",
-          });
+    try {
+      // 1. Send Email via EmailJS
+      await emailjs.send(
+        import.meta.env.VITE_EMAILJS_SERVICE_ID,
+        import.meta.env.VITE_EMAILJS_TEMPLATE_ID,
+        {
+          name: form.name,
+          email: form.email,
+          phone: form.phone,
+          subject: form.subject,
+          message: form.message,
         },
-        (error) => {
-          console.error(error);
-          alert("Failed to send message");
-        }
-      )
-      .finally(() => setLoading(false));
+        import.meta.env.VITE_EMAILJS_PUBLIC_KEY
+      );
+
+      // 2. Save to Firestore (feedbacks collection) for Admin Dashboard
+      await addDoc(collection(userDB, "feedbacks"), {
+        userId: 'public_guest',
+        userName: form.name,
+        userEmail: form.email,
+        phone: form.phone,
+        subject: `[Public Contact] ${form.subject}`,
+        message: form.message,
+        category: 'Public Contact',
+        status: 'Pending',
+        createdAt: new Date().toISOString()
+      });
+
+      // 3. Notify Admin
+      await addDoc(collection(userDB, "notifications"), {
+        role: "admin", 
+        type: "NEW_CONTACT",
+        title: "Public Contact Form",
+        message: `${form.name} reached out regarding: ${form.subject}`,
+        isRead: false,
+        createdAt: new Date().toISOString()
+      });
+
+      alert("Message sent successfully!");
+      setForm({ name: "", email: "", phone: "", subject: "", message: "" });
+    } catch (error) {
+      console.error(error);
+      alert("Failed to send message. Please try again.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
     <div className="bg-slate-950 min-h-screen text-slate-300 font-sans">
-      
-      {/* ================= HERO SECTION ================= */}
+      {/* HERO SECTION */}
       <section className="relative py-24 px-6 overflow-hidden">
         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-full bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-blue-500/10 via-transparent to-transparent -z-10" />
         
@@ -81,7 +94,7 @@ export default function Contact() {
         </div>
       </section>
 
-      {/* ================= INFO CARDS ================= */}
+      {/* INFO CARDS */}
       <section className="pb-24 px-6 max-w-7xl mx-auto">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           {[
@@ -103,7 +116,7 @@ export default function Contact() {
         </div>
       </section>
 
-      {/* ================= FORM + SUPPORT SECTION ================= */}
+      {/* FORM + SUPPORT SECTION */}
       <section className="pb-32 px-6 max-w-7xl mx-auto">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-12">
           
@@ -117,58 +130,41 @@ export default function Contact() {
             <form onSubmit={sendMessage} className="space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <input
-                  name="name"
-                  type="text"
-                  placeholder="Full Name"
+                  name="name" type="text" placeholder="Full Name" required
                   className="w-full bg-slate-950 border border-white/10 rounded-xl px-5 py-4 text-white focus:outline-none focus:border-blue-500 transition-colors"
-                  value={form.name}
-                  onChange={handleChange}
-                  required
+                  value={form.name} onChange={handleChange}
                 />
                 <input
-                  name="email"
-                  type="email"
-                  placeholder="Email Address"
+                  name="email" type="email" placeholder="Email Address" required
                   className="w-full bg-slate-950 border border-white/10 rounded-xl px-5 py-4 text-white focus:outline-none focus:border-blue-500 transition-colors"
-                  value={form.email}
-                  onChange={handleChange}
-                  required
+                  value={form.email} onChange={handleChange}
                 />
                 <input
-                  name="phone"
-                  type="text"
-                  placeholder="Phone Number"
+                  name="phone" type="text" placeholder="Phone Number"
                   className="w-full bg-slate-950 border border-white/10 rounded-xl px-5 py-4 text-white focus:outline-none focus:border-blue-500 transition-colors"
-                  value={form.phone}
-                  onChange={handleChange}
+                  value={form.phone} onChange={handleChange}
                 />
                 <select
-                  name="subject"
+                  name="subject" required
                   className="w-full bg-slate-950 border border-white/10 rounded-xl px-5 py-4 text-white focus:outline-none focus:border-blue-500 transition-colors appearance-none"
-                  value={form.subject}
-                  onChange={handleChange}
-                  required
+                  value={form.subject} onChange={handleChange}
                 >
                   <option value="" disabled>Select Subject</option>
                   <option>Account Issue</option>
                   <option>Loan Query</option>
                   <option>Card Support</option>
+                  <option>General Support</option>
                 </select>
               </div>
 
               <textarea
-                name="message"
-                rows="5"
-                placeholder="How can we help you?"
+                name="message" rows="5" placeholder="How can we help you?" required
                 className="w-full bg-slate-950 border border-white/10 rounded-xl px-5 py-4 text-white focus:outline-none focus:border-blue-500 transition-colors resize-none"
-                value={form.message}
-                onChange={handleChange}
-                required
+                value={form.message} onChange={handleChange}
               />
 
               <button 
-                type="submit" 
-                disabled={loading}
+                type="submit" disabled={loading}
                 className="w-full md:w-auto px-10 py-4 bg-blue-600 hover:bg-blue-500 disabled:bg-slate-800 text-white font-bold rounded-xl transition-all flex items-center justify-center gap-3 shadow-lg shadow-blue-500/20 active:scale-[0.98]"
               >
                 {loading ? "Sending..." : <>Send Message <ArrowRight /></>}
@@ -191,12 +187,7 @@ export default function Contact() {
               <ChatDotsFill size={32} className="mb-6 text-emerald-400" />
               <h3 className="text-xl font-bold text-white mb-3">Live Chat Support</h3>
               <p className="text-slate-400 text-sm mb-8">Chat with our support team in real time via WhatsApp.</p>
-              <a
-                href="https://wa.me/916300608164?text=Hi%20VajraBank%20Support,%20I%20need%20assistance"
-                target="_blank"
-                rel="noreferrer"
-                className="inline-flex items-center gap-2 text-emerald-400 font-bold hover:gap-4 transition-all"
-              >
+              <a href="https://wa.me/916300608164?text=Hi%20VajraBank%20Support,%20I%20need%20assistance" target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 text-emerald-400 font-bold hover:gap-4 transition-all">
                 Start Chat <ArrowRight />
               </a>
             </div>

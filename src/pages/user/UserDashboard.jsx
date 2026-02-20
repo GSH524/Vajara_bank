@@ -25,6 +25,8 @@ export default function UserDashboard() {
 
   useEffect(() => {
     if (!user?.email) return;
+
+    // 1. Existing Bank Data (Legacy Collection)
     const q1 = query(collection(userDB, "users1"), where("Email", "==", user.email));
     const unsub1 = onSnapshot(q1, (snapshot) => {
       const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
@@ -32,6 +34,7 @@ export default function UserDashboard() {
       if (data.length > 0) setDataLoading(false);
     });
 
+    // 2. New User Data (Real-time listener for balance updates)
     const q2 = query(collection(userDB, "users"), where("Email", "==", user.email));
     const unsub2 = onSnapshot(q2, (snapshot) => {
       const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
@@ -39,6 +42,7 @@ export default function UserDashboard() {
       setDataLoading(false);
     });
 
+    // 3. Real-time Transaction Feed
     const q3 = query(collection(userDB, "transfer"), where("senderEmail", "==", user.email.toLowerCase()));
     const unsub3 = onSnapshot(q3, (snapshot) => {
       const txns = snapshot.docs.map(doc => ({
@@ -50,6 +54,7 @@ export default function UserDashboard() {
       }));
       setFirebaseTxns(txns);
     });
+
     return () => { unsub1(); unsub2(); unsub3(); };
   }, [user]);
 
@@ -60,6 +65,7 @@ export default function UserDashboard() {
     const activeRecord = bankRecord || newRecord;
     if (!activeRecord) return null;
 
+    // Process Historical Data
     const historicalTxns = firestoreBankData.filter(item => item.TransactionID).map(item => ({
       id: item.TransactionID,
       type: item["Transaction Type"] === "Withdrawal" ? 'Transfer' : 'Deposit',
@@ -73,24 +79,25 @@ export default function UserDashboard() {
     }
 
     return {
-      firstName: activeRecord["First Name"] || "User",
-      lastName: activeRecord["Last Name"] || "",
-      fullName: `${activeRecord["First Name"] || ""} ${activeRecord["Last Name"] || ""}`.trim(),
-      email: activeRecord["Email"],
-      profilePic: activeRecord["profilePic"] || null,
+      firstName: activeRecord["First Name"] || activeRecord.firstName || "User",
+      lastName: activeRecord["Last Name"] || activeRecord.lastName || "",
+      fullName: activeRecord.fullName || `${activeRecord["First Name"] || ""} ${activeRecord["Last Name"] || ""}`.trim(),
+      email: activeRecord["Email"] || activeRecord.email,
+      profilePic: activeRecord["profilePic"] || activeRecord.imageUrl || null,
       address: activeRecord["Address"] || "Not Set",
       contact: activeRecord["Contact Number"] || "N/A",
       gender: activeRecord["Gender"] || "N/A",
       age: activeRecord["Age"] || "N/A",
       customerId: activeRecord["Customer ID"] || "Pending",
-      accountNumber: activeRecord["Account_Number"] || "Processing...",
+      accountNumber: activeRecord["Account_Number"] || activeRecord.accountNumber || "Processing...",
       accountType: activeRecord["Account Type"] || "Savings",
       branchId: activeRecord["Branch ID"] || "Main",
       ifscCode: activeRecord["IFSC Code"] || "VAJ000524",
-      balance: Number(activeRecord["Account Balance"] || 0),
+      // REAL-TIME BALANCE: Map directly from Firestore field
+      balance: Number(activeRecord["Account Balance"] || activeRecord.balance || 0),
       rewards: Number(activeRecord["Rewards Points"] || 0),
       cibil: Number(activeRecord["CIBIL_Score"] || 0),
-      panCard: activeRecord["PAN_Card"] || "N/A",
+      panCard: activeRecord["PAN_Card"] || activeRecord.panCard || "N/A",
       creditLimit: Number(activeRecord["Credit Limit"] || 50000),
       ccBalance: Number(activeRecord["Credit Card Balance"] || 0),
       status: activeRecord["ActiveStatus"] || "Pending",
@@ -177,6 +184,7 @@ export default function UserDashboard() {
         <div className="lg:col-span-2 bg-gradient-to-br from-indigo-600 to-blue-700 p-6 rounded-[2rem] shadow-xl relative overflow-hidden">
           <div className="relative z-10">
             <p className="text-indigo-100/70 text-xs font-bold uppercase tracking-widest">Available Balance</p>
+            {/* Balance re-renders instantly when Firestore 'Account Balance' field is updated */}
             <h2 className="text-4xl font-black text-white mt-2">₹{userData?.balance.toLocaleString()}</h2>
             <p className="text-white/40 font-mono text-[10px] mt-4 uppercase">A/C: {userData?.accountNumber}</p>
           </div>
@@ -217,10 +225,6 @@ export default function UserDashboard() {
                 <span className="text-white font-bold">{userData?.gender} / {userData?.age}</span>
               </div>
               <div className="flex justify-between border-b border-white/5 pb-2">
-                <span className="text-slate-500 uppercase">Nominee</span>
-                <span className="text-white font-bold">{userData?.nomineeName} ({userData?.nomineeRelation})</span>
-              </div>
-              <div className="flex justify-between border-b border-white/5 pb-2">
                 <span className="text-slate-500 uppercase">Contact</span>
                 <span className="text-white">{userData?.contact}</span>
               </div>
@@ -238,7 +242,7 @@ export default function UserDashboard() {
               <div className="py-4 min-h-[140px] flex flex-col items-center justify-center bg-slate-950/50 rounded-2xl border border-white/5 mt-4">
                 {!showCibil && !isCheckingCibil && (
                   <button onClick={handleCibilCheck} className="flex items-center gap-2 px-6 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-[10px] font-black uppercase rounded-full transition-all shadow-lg">
-                    Check Health Score
+                    Check Credit Score
                   </button>
                 )}
                 {isCheckingCibil && <div className="w-8 h-8 border-2 border-t-indigo-500 rounded-full animate-spin"></div>}
@@ -254,7 +258,7 @@ export default function UserDashboard() {
                       </svg>
                       <span className="absolute text-xl font-black font-mono">{Math.floor(animatedScore)}</span>
                     </div>
-                    <span className="text-[9px] text-slate-500 mt-2 font-bold uppercase tracking-widest">Financial Health</span>
+                    <span className="text-[9px] text-slate-500 mt-2 font-bold uppercase tracking-widest">Financial Health Score</span>
                   </div>
                 )}
               </div>

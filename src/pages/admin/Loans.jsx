@@ -3,13 +3,13 @@ import { useBankData } from '../../hooks/useBankData';
 import { useAdminActions } from '../../hooks/useAdminActions';
 import {
   collection, query, where, onSnapshot, doc,
-  updateDoc, addDoc, serverTimestamp
+  updateDoc, addDoc, serverTimestamp, increment // Added increment
 } from 'firebase/firestore';
 import { userDB } from '../../firebaseUser';
 import {
   CashStack, CheckCircle, XCircle, Person, PatchCheck, 
-  ClockHistory, ChevronLeft, ChevronRight,
-  ClipboardData, ArrowRightShort
+  ClockHistory, ChevronLeft, ChevronRight, CalendarWeek,
+  ClipboardData, ArrowRightShort, Search, Funnel
 } from 'react-bootstrap-icons';
 
 export default function AdminLoans() {
@@ -19,11 +19,11 @@ export default function AdminLoans() {
   const [loadingApps, setLoadingApps] = useState(true);
   const [selectedLoan, setSelectedLoan] = useState(null);
   
-  // Pagination State
+  const [searchTerm, setSearchTerm] = useState("");
+  const [statusFilter, setStatusFilter] = useState("ALL");
   const [currentPage, setCurrentPage] = useState(1);
-  const ITEMS_PER_PAGE = 10;
+  const ITEMS_PER_PAGE = 8;
 
-  // 1. Real-time listener for pending applications
   useEffect(() => {
     const q = query(collection(userDB, 'loanApplications'), where('status', '==', 'pending'));
     const unsubscribe = onSnapshot(q, (snapshot) => {
@@ -38,36 +38,56 @@ export default function AdminLoans() {
     return () => unsubscribe();
   }, []);
 
-  // 2. Action: Approve
+  // UPDATED ACTION: Approve with Balance Increment
   const handleApprove = async (loan) => {
     const confirmApprove = window.confirm(`Approve loan of ₹${loan.amount?.toLocaleString()} for ${loan.userName}?`);
     if (!confirmApprove) return;
     try {
-      const disbursementDays = 3 + Math.floor(Math.random() * 5);
+      const disbursementDays = 0; // Set to 0 for instant digital disbursement
+      
+      // 1. Update Loan Application Status
       await updateDoc(doc(userDB, 'loanApplications', loan.id), {
         status: 'approved',
         expectedDisbursementDays: disbursementDays,
         approvedAt: serverTimestamp()
       });
+
+      // 2. DISBURSEMENT LOGIC: Update User's Account Balance
+      // This triggers the onSnapshot in UserDashboard.js instantly
+      const userRef = doc(userDB, 'users', loan.userId);
+      await updateDoc(userRef, {
+        "Account Balance": increment(loan.amount)
+      });
       
       updateLoan(loan.userId, 'Approved');
       
+      // 3. Create Notification
       await addDoc(collection(userDB, 'notifications'), {
         userId: loan.userId,
         role: 'user',
         type: 'loan',
-        message: `Your loan of ₹${loan.amount?.toLocaleString()} is approved! Disbursement in ${disbursementDays} days.`,
+        message: `Success! ₹${loan.amount?.toLocaleString()} has been disbursed to your vault.`,
         read: false,
         redirectTo: '/user/loans',
         createdAt: serverTimestamp()
       });
+
+      // 4. Create Transaction Record (Optional but recommended for 'Real' feel)
+      await addDoc(collection(userDB, 'transfer'), {
+        senderEmail: loan.userEmail,
+        amount: loan.amount,
+        type: 'Deposit',
+        reason: `Loan Disbursement: ${loan.loanType}`,
+        timestamp: serverTimestamp()
+      });
+
       setSelectedLoan(null);
+      alert("Loan approved and funds disbursed to user balance.");
     } catch (err) {
-      alert("Error: " + err.message);
+      alert("Error during approval: " + err.message);
     }
   };
 
-  // 3. Action: Reject
   const handleReject = async (loan) => {
     const reason = prompt("Enter rejection reason:");
     if (!reason) return;
@@ -95,20 +115,16 @@ export default function AdminLoans() {
     }
   };
 
-  // 4. Data Processing updated for the specific JSON schema provided
   const activeLoans = useMemo(() => {
     if (!data) return [];
-    
-    return data
+    let processed = data
       .filter(c => {
-        // Checking for Loan Amount from the provided JSON structure
         const hasLegacyLoan = c.raw?.['Loan Amount'] > 0;
         const hasApprovedOverride = overrides[c.customerId]?.loanStatus === 'Approved';
         return hasLegacyLoan || hasApprovedOverride;
       })
       .map(item => ({
         ...item,
-        // Mapping exactly to the fields in your JSON list
         loanId: item.raw?.['Loan ID'] || 'N/A',
         loanAmount: item.raw?.['Loan Amount'] || 0,
         loanType: item.raw?.['Loan Type'] || 'Personal',
@@ -117,14 +133,29 @@ export default function AdminLoans() {
         interestRate: item.raw?.['Interest Rate'] || 0,
         outstanding: item.raw?.['Total_Loan_Outstanding'] || 0
       }));
-  }, [data, overrides]);
 
-  // 5. Pagination Logic
+    if (statusFilter !== "ALL") {
+      processed = processed.filter(l => l.status.toLowerCase() === statusFilter.toLowerCase());
+    }
+
+    if (searchTerm) {
+      const term = searchTerm.toLowerCase();
+      processed = processed.filter(l => 
+        l.fullName?.toLowerCase().includes(term) ||
+        l.loanId?.toLowerCase().includes(term) ||
+        l.loanType?.toLowerCase().includes(term)
+      );
+    }
+    return processed;
+  }, [data, overrides, searchTerm, statusFilter]);
+
   const totalPages = Math.max(1, Math.ceil(activeLoans.length / ITEMS_PER_PAGE));
   const paginatedLoans = useMemo(() => {
     const start = (currentPage - 1) * ITEMS_PER_PAGE;
     return activeLoans.slice(start, start + ITEMS_PER_PAGE);
   }, [activeLoans, currentPage]);
+
+  useEffect(() => { setCurrentPage(1); }, [searchTerm, statusFilter]);
 
   if (dataLoading || loadingApps) return (
     <div className="min-h-screen bg-[#020617] flex flex-col items-center justify-center">
@@ -135,7 +166,6 @@ export default function AdminLoans() {
 
   return (
     <div className="w-full h-screen bg-[#020617] text-slate-100 flex flex-col overflow-hidden font-sans">
-      
       <header className="px-6 lg:px-10 pt-6 lg:pt-10 pb-6 flex flex-col md:flex-row justify-between items-start md:items-end gap-6 flex-shrink-0">
         <div>
           <h1 className="text-4xl font-black text-white tracking-tighter uppercase flex items-center gap-3">
@@ -150,8 +180,6 @@ export default function AdminLoans() {
       </header>
 
       <div className="flex-1 grid grid-cols-1 lg:grid-cols-12 gap-8 px-6 lg:px-10 pb-10 overflow-hidden">
-        
-        {/* LEFT: VETTING QUEUE */}
         <div className="lg:col-span-5 space-y-6 flex flex-col overflow-hidden">
           <div className="flex items-center justify-between flex-shrink-0">
             <h3 className="text-xs font-black uppercase tracking-widest text-slate-500">Vetting Queue</h3>
@@ -194,30 +222,21 @@ export default function AdminLoans() {
               <h4 className="text-[10px] font-black uppercase tracking-widest text-indigo-400 mb-6 flex items-center gap-2">
                 <ClipboardData /> Reviewing Application
               </h4>
-              
               <div className="grid grid-cols-2 gap-3 mb-6">
                 <InfoItem icon={<Person />} val={selectedLoan.userName} />
                 <InfoItem icon={<CashStack />} val={`₹${selectedLoan.amount?.toLocaleString()}`} />
                 <InfoItem icon={<CalendarWeek />} val={`${selectedLoan.tenureMonths} Mos`} />
                 <InfoItem icon={<ClockHistory />} val={selectedLoan.loanType} />
               </div>
-
               <div className="bg-indigo-500/5 border border-indigo-500/10 p-4 rounded-xl mb-6">
                 <p className="text-[9px] font-black text-slate-500 uppercase mb-1">Purpose of Loan</p>
                 <p className="text-xs text-slate-300 italic">"{selectedLoan.reason || 'Not specified'}"</p>
               </div>
-
               <div className="flex gap-3">
-                <button 
-                  onClick={() => handleApprove(selectedLoan)}
-                  className="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white font-black text-[10px] uppercase py-3.5 rounded-xl transition-all active:scale-95 flex items-center justify-center gap-2"
-                >
-                  <CheckCircle size={14}/> Approve
+                <button onClick={() => handleApprove(selectedLoan)} className="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white font-black text-[10px] uppercase py-3.5 rounded-xl transition-all active:scale-95 flex items-center justify-center gap-2">
+                  <CheckCircle size={14}/> Approve & Credit
                 </button>
-                <button 
-                  onClick={() => handleReject(selectedLoan)}
-                  className="flex-1 bg-rose-600/10 hover:bg-rose-600 text-rose-500 hover:text-white border border-rose-500/20 font-black text-[10px] uppercase py-3.5 rounded-xl transition-all active:scale-95 flex items-center justify-center gap-2"
-                >
+                <button onClick={() => handleReject(selectedLoan)} className="flex-1 bg-rose-600/10 hover:bg-rose-600 text-rose-500 hover:text-white border border-rose-500/20 font-black text-[10px] uppercase py-3.5 rounded-xl transition-all active:scale-95 flex items-center justify-center gap-2">
                   <XCircle size={14}/> Reject
                 </button>
               </div>
@@ -225,14 +244,27 @@ export default function AdminLoans() {
           )}
         </div>
 
-        {/* RIGHT: PORTFOLIO INVENTORY */}
         <div className="lg:col-span-7 flex flex-col overflow-hidden">
-          <div className="flex items-center justify-between mb-6 flex-shrink-0">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-4 flex-shrink-0 gap-3">
              <h3 className="text-xs font-black uppercase tracking-widest text-slate-500">Portfolio Inventory</h3>
+             <div className="flex gap-2">
+               <div className="relative group w-full sm:w-48">
+                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-indigo-500 transition-colors" size={14} />
+                 <input type="text" placeholder="Search..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="w-full bg-slate-900 border border-white/10 rounded-xl py-2 pl-9 pr-3 text-xs outline-none focus:border-indigo-500 transition-all text-white"/>
+               </div>
+               <div className="relative">
+                 <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="bg-slate-900 border border-white/10 rounded-xl py-2 px-3 text-xs text-slate-300 outline-none focus:border-indigo-500 transition-all appearance-none cursor-pointer pr-8">
+                   <option value="ALL">All Status</option>
+                   <option value="Current">Current / Approved</option>
+                   <option value="Closed">Closed</option>
+                   <option value="Defaulted">Defaulted</option>
+                 </select>
+                 <Funnel className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none" size={12}/>
+               </div>
+             </div>
           </div>
-          
           <div className="bg-slate-900/40 border border-white/5 rounded-[2rem] overflow-hidden shadow-2xl flex flex-col flex-1 backdrop-blur-xl">
-            <div className="overflow-x-auto overflow-y-auto flex-1">
+            <div className="overflow-x-auto overflow-y-auto flex-1 custom-scrollbar">
               <table className="w-full text-left">
                 <thead className="bg-white/[0.03] border-b border-white/5 sticky top-0 z-10">
                   <tr>
@@ -242,44 +274,35 @@ export default function AdminLoans() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-white/5">
-                  {paginatedLoans.map(l => (
-                    <tr key={l.customerId} className="group hover:bg-white/[0.02] transition-colors">
-                      <td className="px-6 py-4">
-                        <div className="font-bold text-sm text-white group-hover:text-indigo-400 transition-colors">{l.fullName}</div>
-                        <div className="text-[9px] font-mono text-slate-600 uppercase mt-0.5">ID: {l.loanId}</div>
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="font-mono text-xs text-emerald-400 font-black">₹{Number(l.loanAmount).toLocaleString()}</div>
-                        <div className="text-[9px] text-slate-600 font-bold uppercase mt-0.5">{l.interestRate}% • {l.tenure} Months</div>
-                      </td>
-                      <td className="px-6 py-4">
-                        <StatusPill status={l.status} />
-                      </td>
-                    </tr>
-                  ))}
+                  {paginatedLoans.length === 0 ? (
+                    <tr><td colSpan="3" className="py-20 text-center text-slate-600 italic text-sm">No matches found.</td></tr>
+                  ) : (
+                    paginatedLoans.map(l => (
+                      <tr key={l.customerId} className="group hover:bg-white/[0.02] transition-colors">
+                        <td className="px-6 py-4">
+                          <div className="font-bold text-sm text-white group-hover:text-indigo-400 transition-colors">{l.fullName}</div>
+                          <div className="text-[9px] font-mono text-slate-600 uppercase mt-0.5">ID: {l.loanId}</div>
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="font-mono text-xs text-emerald-400 font-black">₹{Number(l.loanAmount).toLocaleString()}</div>
+                          <div className="text-[9px] text-slate-600 font-bold uppercase mt-0.5">{l.interestRate}% • {l.tenure} Months</div>
+                        </td>
+                        <td className="px-6 py-4"><StatusPill status={l.status} /></td>
+                      </tr>
+                    ))
+                  )}
                 </tbody>
               </table>
             </div>
-
-            <div className="p-4 bg-white/[0.02] border-t border-white/5 flex items-center justify-between flex-shrink-0">
-              <span className="text-[9px] font-black text-slate-600 uppercase tracking-widest">Page {currentPage} of {totalPages}</span>
-              <div className="flex gap-2">
-                <button 
-                   disabled={currentPage === 1}
-                   onClick={() => setCurrentPage(prev => prev - 1)}
-                   className="p-2 rounded-lg bg-slate-800 border border-white/5 text-slate-400 hover:text-white disabled:opacity-20 transition-all"
-                >
-                  <ChevronLeft size={16} />
-                </button>
-                <button 
-                   disabled={currentPage === totalPages}
-                   onClick={() => setCurrentPage(prev => prev + 1)}
-                   className="p-2 rounded-lg bg-slate-800 border border-white/5 text-slate-400 hover:text-white disabled:opacity-20 transition-all"
-                >
-                  <ChevronRight size={16} />
-                </button>
+            {paginatedLoans.length > 0 && (
+              <div className="p-4 bg-white/[0.02] border-t border-white/5 flex items-center justify-between flex-shrink-0">
+                <span className="text-[9px] font-black text-slate-600 uppercase tracking-widest">Page {currentPage} of {totalPages}</span>
+                <div className="flex gap-2">
+                  <button disabled={currentPage === 1} onClick={() => setCurrentPage(prev => prev - 1)} className="p-2 rounded-lg bg-slate-800 border border-white/5 text-slate-400 hover:text-white disabled:opacity-20 transition-all"><ChevronLeft size={16} /></button>
+                  <button disabled={currentPage === totalPages} onClick={() => setCurrentPage(prev => prev + 1)} className="p-2 rounded-lg bg-slate-800 border border-white/5 text-slate-400 hover:text-white disabled:opacity-20 transition-all"><ChevronRight size={16} /></button>
+                </div>
               </div>
-            </div>
+            )}
           </div>
         </div>
       </div>
@@ -310,15 +333,12 @@ function StatusPill({ status }) {
   const isApproved = status === 'Approved' || status === 'Current';
   const isClosed = status === 'Closed';
   const isDefaulted = status === 'Defaulted' || status === 'Rejected';
-  
   return (
     <span className={`px-2.5 py-1 rounded-md text-[9px] font-black uppercase tracking-widest border ${
       isApproved ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' : 
       isClosed ? 'bg-indigo-500/10 text-indigo-400 border-indigo-500/20' :
       isDefaulted ? 'bg-rose-500/10 text-rose-500 border-rose-500/20' : 
       'bg-slate-500/10 text-slate-400 border-slate-500/20'
-    }`}>
-      {status || 'Unknown'}
-    </span>
+    }`}>{status || 'Unknown'}</span>
   );
 }

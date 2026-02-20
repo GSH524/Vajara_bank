@@ -3,7 +3,7 @@ import {
     BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
     PieChart, Pie, Cell, Legend, AreaChart, Area
 } from 'recharts';
-import CreditUtilization from './CreditUtilization';
+ 
 
 // 1. Keep your existing category mapping
 const mapCategory = (reason) => {
@@ -151,8 +151,6 @@ export default function UserAnalytics({ transactions = [], currentProfile = null
                         </PieChart>
                     </ResponsiveContainer>
                 </AnalyticsCard>
-
-                
 
                 <AnalyticsCard title="Balance Stability">
                     <ResponsiveContainer width="100%" height="100%">

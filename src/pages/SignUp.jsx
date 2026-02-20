@@ -10,8 +10,12 @@ export default function SignUp() {
     const [submitting, setSubmitting] = useState(false);
     const [errors, setErrors] = useState({});
     
+    // Base64 states
     const [profileImgBase64, setProfileImgBase64] = useState(null);
     const [idProofBase64, setIdProofBase64] = useState(null);
+    
+    // MISSING: Added state to store image previews
+    const [previews, setPreviews] = useState({ profile: null, idProof: null });
 
     const [formData, setFormData] = useState({
         firstName: '', lastName: '', dob: '', gender: '', mobile: '', email: '',
@@ -21,6 +25,42 @@ export default function SignUp() {
         password: '', confirmPassword: ''
     });
 
+    // MISSING: Added handleNext function
+    const handleNext = () => {
+        // You can add validation logic here before moving to the next step
+        setCurrentStep(prev => prev + 1);
+    };
+
+    // MISSING: Added handleChange function for text inputs
+    const handleChange = (e) => {
+        const { name, value } = e.target;
+        setFormData(prev => ({ ...prev, [name]: value }));
+        if (errors[name]) {
+            setErrors(prev => ({ ...prev, [name]: null }));
+        }
+    };
+
+    // MISSING: Added handleFileChange function for image uploads
+    const handleFileChange = (e) => {
+        const file = e.target.files[0];
+        if (file) {
+            const name = e.target.name;
+            const previewUrl = URL.createObjectURL(file);
+            
+            const reader = new FileReader();
+            reader.onloadend = () => {
+                if (name === 'profileImg') {
+                    setProfileImgBase64(reader.result);
+                    setPreviews(prev => ({ ...prev, profile: previewUrl }));
+                } else if (name === 'idProofFile') {
+                    setIdProofBase64(reader.result);
+                    setPreviews(prev => ({ ...prev, idProof: previewUrl }));
+                }
+            };
+            reader.readAsDataURL(file);
+        }
+    };
+
     const calculateAge = (dob) => {
         const birthday = new Date(dob);
         return Math.abs(new Date(Date.now() - birthday.getTime()).getUTCFullYear() - 1970);
@@ -28,7 +68,6 @@ export default function SignUp() {
 
     const generateBankingDetails = (data) => {
         const custId = `CUST-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
-        const today = new Date().toLocaleDateString();
         
         return {
             // Unified keys for UI Lists & Analytics
@@ -60,7 +99,11 @@ export default function SignUp() {
             "Transaction Type": "Deposit",
             "Transaction Amount": Number(data.initialDeposit),
             "Mode_of_Payment": "Digital",
-            "Transaction_Reason": "Initial Deposit"
+            "Transaction_Reason": "Initial Deposit",
+            
+            // Adding the base64 images to the database payload
+            profileImage: profileImgBase64,
+            idProofImage: idProofBase64
         };
     };
 
@@ -103,7 +146,6 @@ export default function SignUp() {
 
     return (
         <div className="min-h-screen bg-slate-950 flex items-center justify-center p-6 font-sans text-white">
-            {/* Same JSX structure as provided by you */}
             <div className="max-w-2xl w-full bg-slate-900 rounded-[2rem] border border-white/5 shadow-2xl overflow-hidden">
                 <div className="p-8 md:p-12">
                     <div className="text-center mb-10">

@@ -1,148 +1,112 @@
-import React, { useMemo, useState, useEffect } from 'react';
-import { useBankData } from '../../hooks/useBankData';
-import { useAdminActions } from '../../hooks/useAdminActions';
-import DashboardCore from '../../components/admin/DashboardCore';
-// ✅ FIXED: Changed 'activity' to 'Activity'
-import { ShieldLockFill, Activity, CpuFill, LightningChargeFill } from 'react-bootstrap-icons';
-import { collection, query, where, getDocs, doc, updateDoc } from 'firebase/firestore';
+import React, { useState, useEffect } from 'react';
+import { useCurrentUser } from '../../hooks/useCurrentUser';
+import { collection, query, where, onSnapshot, addDoc, serverTimestamp } from 'firebase/firestore';
 import { userDB } from '../../firebaseUser';
+import { CreditCard as CardIcon, ClockHistory, HourglassSplit } from 'react-bootstrap-icons';
+import toast, { Toaster } from 'react-hot-toast';
+import CardVisual from '../../components/user/CardVisual';
+import CardApplicationForm from '../../components/user/CardApplicationForm';
 
-export default function AdminDashboard() {
-  const { data, loading, error } = useBankData();
-  const { overrides, auditLogs } = useAdminActions();
-  const [pendingUsers, setPendingUsers] = useState([]);
-  const [loadingUsers, setLoadingUsers] = useState(true);
+export default function Cards() {
+  const { currentUser } = useCurrentUser();
+  const [applications, setApplications] = useState([]);
+  const [showForm, setShowForm] = useState(false);
+  const [loading, setLoading] = useState(true);
 
-  // Firestore Fetching Logic (unchanged)
+  const hasCard = !!currentUser?.cardId;
+
   useEffect(() => {
-    const fetchPendingUsers = async () => {
-      try {
-        const q = query(collection(userDB, 'users'), where('status', '==', 'pending'));
-        const querySnapshot = await getDocs(q);
-        const users = [];
-        querySnapshot.forEach((doc) => {
-          users.push({ id: doc.id, ...doc.data() });
-        });
-        setPendingUsers(users);
-      } catch (error) {
-        console.error('Error fetching pending users:', error);
-      } finally {
-        setLoadingUsers(false);
-      }
-    };
-    fetchPendingUsers();
-  }, []);
-
-  const approveUser = async (userId) => {
-    try {
-      await updateDoc(doc(userDB, 'users', userId), { status: 'approved' });
-      setPendingUsers(prev => prev.filter(user => user.id !== userId));
-    } catch (error) {
-      console.error('Error:', error);
-      alert('Failed to approve user.');
-    }
-  };
-
-  const rejectUser = async (userId) => {
-    try {
-      await updateDoc(doc(userDB, 'users', userId), { status: 'rejected' });
-      setPendingUsers(prev => prev.filter(user => user.id !== userId));
-    } catch (error) {
-      console.error('Error:', error);
-    }
-  };
-
-  const processedData = useMemo(() => {
-    return data.map(item => {
-      const override = overrides[item.customerId];
-      if (override) {
-        return {
-          ...item,
-          isFrozen: override.isFrozen ?? item.isFrozen,
-          isHighRisk: override.flagged ? true : item.isHighRisk
-        };
-      }
-      return item;
+    if (!currentUser?.uid) return;
+    const q = query(collection(userDB, 'creditCardApplications'), where('userId', '==', currentUser.uid));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      setApplications(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+      setLoading(false);
     });
-  }, [data, overrides]);
+    return () => unsubscribe();
+  }, [currentUser]);
 
-  // Loading State - Professional Skeleton
-  if (loading) return (
-    <div className="min-h-screen bg-[#0a0c10] flex items-center justify-center">
-      <div className="text-center">
-        <div className="w-16 h-16 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-        <p className="text-blue-500 font-mono tracking-widest uppercase text-xs">Initializing Secure Terminal...</p>
-      </div>
-    </div>
-  );
+  const handleApply = async (formData) => {
+    const tid = toast.loading("Submitting to Vault...");
+    try {
+      // RESOLVED: Name Builder ensures the Admin sees the real name instead of "User"
+      const fName = currentUser.firstName || currentUser["First Name"] || "";
+      const lName = currentUser.lastName || currentUser["Last Name"] || "";
+      const resolvedName = currentUser.fullName || `${fName} ${lName}`.trim() || "Vajra Member";
 
-  if (error) return (
-    <div className="min-h-screen bg-[#0a0c10] flex items-center justify-center p-6">
-      <div className="bg-red-500/10 border border-red-500/20 p-6 rounded-2xl max-w-md w-full text-center">
-        <h2 className="text-red-500 font-bold mb-2">System Critical Error</h2>
-        <p className="text-red-400/70 text-sm">{error}</p>
-      </div>
-    </div>
-  );
+      await addDoc(collection(userDB, 'creditCardApplications'), {
+        userId: currentUser.uid,
+        userEmail: currentUser.email.toLowerCase(), // Store email for Admin
+        userName: resolvedName, // Store Name for Admin
+        fullName: resolvedName, // Redundant field for visual consistency
+        ...formData,
+        status: 'pending',
+        riskLevel: currentUser.riskLevel || 'Low',
+        createdAt: serverTimestamp()
+      });
+
+      setShowForm(false);
+      toast.success("Application Received", { id: tid });
+    } catch (err) {
+      toast.error("Submission failed", { id: tid });
+    }
+  };
+
+  if (loading) return <div className="min-h-screen bg-slate-950 flex items-center justify-center text-blue-500 font-black animate-pulse uppercase tracking-[0.3em]">Syncing Vault...</div>;
 
   return (
-    <main className="min-h-screen bg-[#0a0c10] text-slate-200 font-sans selection:bg-blue-500/30">
-      {/* Top Status Bar */}
-      <div className="bg-[#0f1218] border-b border-white/5 px-8 py-3 flex justify-between items-center">
-        <div className="flex items-center gap-6">
-          <div className="flex items-center gap-2 text-[10px] font-bold text-emerald-500 uppercase tracking-tighter">
-            <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></div>
-            Mainframe Live
-          </div>
-          <div className="h-4 w-[1px] bg-white/10"></div>
-          <div className="flex items-center gap-2 text-[10px] font-bold text-slate-500 uppercase tracking-tighter">
-            <CpuFill className="text-blue-500" />
-            Admin ID: {userDB.app.options.projectId.slice(0, 8)}
-          </div>
-        </div>
-        <div className="text-[10px] font-mono text-slate-600 italic flex items-center gap-2">
-          <Activity size={10} className="text-emerald-500" />
-          Last Synced: {new Date().toLocaleTimeString()}
-        </div>
+    <main className="min-h-screen bg-slate-950 text-slate-200 p-4 md:p-8">
+      <Toaster position="top-right" />
+      <div className="mb-8">
+        <h1 className="text-3xl font-black text-white flex items-center gap-3 uppercase italic tracking-tighter">
+          <CardIcon className="text-blue-500" /> VAJRA <span className="text-slate-500">CREDIT</span>
+        </h1>
       </div>
 
-      <div className="p-8 max-w-[1600px] mx-auto">
-        {/* Page Header */}
-        <header className="mb-10 flex flex-col md:flex-row md:items-end justify-between gap-4">
-          <div>
-            <div className="flex items-center gap-3 mb-2">
-              <ShieldLockFill className="text-blue-500 text-2xl" />
-              <span className="text-blue-500 font-black text-xs uppercase tracking-[0.3em]">Surveillance Mode</span>
-            </div>
-            <h1 className="text-4xl font-black text-white tracking-tight">System <span className="text-slate-500">Overview</span></h1>
-          </div>
-          
-          <div className="flex gap-2">
-            <button className="px-4 py-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg text-xs font-bold transition-all">
-              Export Audit
-            </button>
-            <button 
-              onClick={() => window.location.reload()}
-              className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-xs font-bold shadow-lg shadow-blue-600/20 transition-all flex items-center gap-2"
-            >
-              <LightningChargeFill /> Refresh Node
-            </button>
-          </div>
-        </header>
-
-        {/* Core Dashboard Logic */}
-        <div className="relative border border-white/5 bg-[#0f1218]/50 rounded-[2rem] p-1 backdrop-blur-xl shadow-2xl">
-           <DashboardCore
-             role="ADMIN"
-             data={processedData}
-             pendingUsers={pendingUsers}
-             loadingUsers={loadingUsers}
-             approveUser={approveUser}
-             rejectUser={rejectUser}
-             auditLogs={auditLogs}
-           />
+      {!hasCard ? (
+        showForm ? (
+          <CardApplicationForm userData={currentUser} onSubmit={handleApply} onCancel={() => setShowForm(false)} />
+        ) : (
+          <>
+            {applications.some(a => a.status === 'pending') ? (
+              <PendingState app={applications.find(a => a.status === 'pending')} />
+            ) : (
+              <EmptyState onApply={() => setShowForm(true)} />
+            )}
+          </>
+        )
+      ) : (
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 animate-in fade-in duration-700">
+           <div className="lg:col-span-5 space-y-6">
+             <CardVisual userData={currentUser} />
+             <div className="bg-slate-900 border border-white/5 p-6 rounded-[2rem] shadow-2xl">
+                <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest block mb-2">Approved Limit</span>
+                <span className="text-2xl font-black text-white">₹{(currentUser.creditLimit || 0).toLocaleString()}</span>
+             </div>
+           </div>
+           <div className="lg:col-span-7 bg-slate-900/30 border border-white/5 rounded-[3rem] p-10 flex flex-col items-center justify-center">
+              <ClockHistory size={40} className="text-slate-700 mb-4" />
+              <p className="text-slate-500 font-bold uppercase text-[10px] tracking-widest">Transaction Intelligence Pending</p>
+           </div>
         </div>
-      </div>
+      )}
     </main>
   );
 }
+
+// Internal Sub-components
+const EmptyState = ({ onApply }) => (
+  <div className="max-w-xl mx-auto mt-20 bg-slate-900 border border-white/5 rounded-[3rem] p-16 text-center shadow-2xl">
+    <CardIcon size={60} className="text-blue-500 mx-auto mb-8" />
+    <h2 className="text-2xl font-black text-white mb-4 uppercase">Unlimited Liquidity</h2>
+    <p className="text-slate-400 mb-10 text-sm">Unlock ultra-premium credit lines with instant virtual provisioning.</p>
+    <button onClick={onApply} className="w-full bg-blue-600 py-5 rounded-2xl font-black text-white uppercase tracking-[0.2em] hover:bg-blue-500 transition-all">Start Application</button>
+  </div>
+);
+
+const PendingState = ({ app }) => (
+  <div className="max-w-xl mx-auto mt-20 bg-slate-900 border border-white/10 rounded-[3rem] p-16 text-center shadow-2xl">
+    <HourglassSplit size={60} className="text-amber-500 mx-auto mb-8 animate-pulse" />
+    <h2 className="text-2xl font-black text-white mb-4 uppercase tracking-tighter">Nexus Vetting</h2>
+    <p className="text-slate-400 text-sm">Your <span className="text-amber-500 font-black">{app.cardType}</span> request is being verified by the Admin nodes.</p>
+  </div>
+);

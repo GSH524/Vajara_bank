@@ -2,17 +2,19 @@ import { Outlet, useNavigate, Navigate } from "react-router-dom";
 import AdminNavbar from "../components/AdminNavbar";
 import { useAuth } from "../context/AuthContext";
 import Footer from "../components/Footer"
+import toast from "react-hot-toast"; // Added toast import
 
 export default function AdminLayout() {
-  const { admin, logoutAdmin, loading } = useAuth(); // Added loading
+  const { admin, logoutAdmin, loading } = useAuth();
   const navigate = useNavigate();
 
-  const handleLogout = () => {
-    logoutAdmin();
-    navigate("/admin");
+  // Added Toast & Redirect to Home
+  const handleLogout = async () => {
+    await logoutAdmin();
+    toast.success("Logout successfully");
+    navigate("/"); 
   };
 
-  // Wait for session check
   if (loading) {
     return (
       <div className="h-screen w-full flex items-center justify-center bg-[#020617]">

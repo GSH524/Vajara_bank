@@ -2,18 +2,19 @@ import { Outlet, useNavigate, Navigate } from "react-router-dom";
 import UserNavbar from "../components/UserNavbar";
 import { useAuth } from "../context/AuthContext";
 import Footer from "../components/Footer";
+import toast from "react-hot-toast"; // Added toast import
 
 export default function UserLayout() {
-  // Destructure loading from context to ensure the component waits for restoration
   const { user, logoutUser, loading } = useAuth(); 
   const navigate = useNavigate();
 
+  // Added Toast to the user logout flow
   const handleLogout = async () => {
     await logoutUser();
+    toast.success("Logout successfully");
     navigate("/");
   };
 
-  // FIX 1: Prevent the component from rendering any content or redirects while loading
   if (loading) {
     return (
       <div className="h-screen w-full flex flex-col items-center justify-center bg-[#020617]">
@@ -25,7 +26,6 @@ export default function UserLayout() {
     );
   }
 
-  // FIX 2: Only redirect if loading has finished AND user is definitely null
   if (!user) {
     return <Navigate to="/login" replace />;
   }
